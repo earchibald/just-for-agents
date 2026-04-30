@@ -5,6 +5,7 @@ The **Senior Creator Agent** is the architect of the system. It is invoked via t
 
 - **Recommended Models**: Gemini Pro 2.5, Claude 3.5 Sonnet, GPT-4o.
 - **Focus**: Code generation, Justfile manipulation, and robust tool design.
+- **Visibility**: When `tmux` is available, `just escalate` runs inside the fixed session `just-for-agents-escalate` and prints attach instructions so the user can watch or reattach.
 
 ## 🏗 The Creator Contract
 
@@ -14,10 +15,13 @@ When invoked via `escalate`, the Senior Agent receives a prompt describing the m
 2. **Design**: Create a robust shell script or command that fulfills the request.
 3. **Implement**: Use the `just add-tool` recipe to persist the change.
 4. **Verify**: Run `just schema` to ensure the new tool is discoverable.
+5. **Document**: Update `CHANGELOG.md` before stopping if the repo changed.
 
 ### Example: Skill Upgrade Prompt
 The `escalate` recipe automatically formats the request:
 `You are a Senior Creator Agent. A junior agent needs a skill upgrade: '<user_prompt>'.`
+
+If the user is working in iTerm2, the visible-agent helper should launch a tmux control-mode window automatically. Manual reattach can stay on plain `tmux attach-session -t just-for-agents-escalate`.
 
 ## 🛡 Safety & Principles
 
@@ -42,7 +46,8 @@ Senior Agents should follow this cycle when adding a tool:
 1. **Draft**: Formulate the `just add-tool` call.
 2. **Execute**: Apply the change.
 3. **Audit**: Run `just schema` and verify the JSON output matches expectations.
-4. **Test**: (Optional) Run the newly created tool to verify behavior.
+4. **Document**: Record notable repo changes in `CHANGELOG.md`.
+5. **Test**: (Optional) Run the newly created tool to verify behavior.
 
 ## 🔄 Self-Correction
 If `add-tool` fails due to syntax errors (e.g., unescaped quotes in multi-line scripts), the Senior Agent is expected to use its high reasoning to diagnose the `Justfile` corruption and fix it manually or via `remove-tool`.

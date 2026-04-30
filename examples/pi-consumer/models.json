@@ -1,0 +1,31 @@
+{
+  "providers": {
+    "ollama": {
+      "baseUrl": "http://localhost:11434/v1",
+      "api": "openai-completions",
+      "apiKey": "ollama",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "supportsUsageInStreaming": false,
+        "maxTokensField": "max_tokens"
+      },
+      "models": [
+        {
+          "id": "just-consumer-qwen3.6:latest",
+          "name": "Qwen 3.6 Consumer",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 4096,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    }
+  }
+}

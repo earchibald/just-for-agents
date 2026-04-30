@@ -47,6 +47,16 @@ pip install just-for-agents
 \# Instruct an agent to learn the local environment  
 just-for-agents \--summarize
 
+### **Versioning**
+
+The canonical project version lives in the root `VERSION` file and follows semantic versioning.
+
+```bash
+just version
+```
+
+Release notes live in `CHANGELOG.md`, and git tags use the matching `vX.Y.Z` format.
+
 ## **📋 Standardized Instruction Set (Spec)**
 
 To ensure interoperability, just-for-agents follows these conventions:

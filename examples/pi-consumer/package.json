@@ -1,0 +1,7 @@
+{
+  "name": "just-for-agents-pi-consumer-example",
+  "private": true,
+  "dependencies": {
+    "typebox": "^1.0.43"
+  }
+}

@@ -166,8 +166,8 @@ The model should see a tiny toolset:
 | --- | --- |
 | `just_schema` | Return the cached manifest, optionally refreshing it |
 | `just_run` | Execute a validated `just` recipe with mapped arguments |
-| `just_escalate` | Invoke `just escalate "<prompt>"` when the current API is insufficient |
-| `just_refresh` | Re-run `bootstrap` and `schema` after the `Justfile` changes |
+| `just_escalate` | Invoke `just escalate "<prompt>"`, then auto-refresh the cached schema on success |
+| `just_refresh` | Re-run `bootstrap` and `schema` after direct `Justfile` changes |
 
 ### `just_run` Rules
 `just_run` is the core tool. It should:
@@ -179,6 +179,10 @@ The model should see a tiny toolset:
 5. Return structured stdout/stderr/exit information
 
 This is important: the Consumer Agent should **not** improvise shell commands. It should only call the documented API surface emitted by `just schema`. The tool call can still use named fields like `{ "file": "/path/to/file" }`, but the extension must translate those into positional `just` argv such as `just md5 /path/to/file`.
+
+For the `research` recipe specifically, `rounds` should be treated as the number of **new** rounds to append in the current invocation. If the user asks for "1 iteration" or "one more round", the Consumer should call `research` with `rounds='1'` and let the recipe continue from the latest completed round automatically.
+
+When keyed tool arguments skip an optional recipe parameter that has a schema default, the Consumer extension should fill that default automatically before executing the positional `just` command. This avoids false validation failures such as requiring `source=''` to be passed explicitly before `subject_id`.
 
 ## 🧪 Pi-Native Skeleton
 
@@ -261,9 +265,19 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const result = spawnSync("just", ["escalate", params.prompt], { cwd: ctx.cwd, encoding: "utf8" });
+      if (result.status !== 0) {
+        throw new Error([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
+      }
+      const currentManifest = refreshManifest(ctx.cwd);
       return {
-        content: [{ type: "text", text: [result.stdout, result.stderr].filter(Boolean).join("\n").trim() }],
-        details: { exitCode: result.status ?? 1 }
+        content: [{
+          type: "text",
+          text: [
+            [result.stdout, result.stderr].filter(Boolean).join("\n").trim(),
+            `Consumer schema refreshed (${(currentManifest.tools ?? []).length} tools).`
+          ].filter(Boolean).join("\n\n")
+        }],
+        details: { exitCode: result.status ?? 1, toolCount: (currentManifest.tools ?? []).length }
       };
     }
   });
@@ -343,7 +357,7 @@ flowchart TD
     E --> F[Return result to user]
     D -- No --> G[Call just_escalate]
     G --> H[Senior Creator Agent extends Justfile]
-    H --> I[Call just_refresh]
+    H --> I[Extension refreshes schema]
     I --> E
 ```
 

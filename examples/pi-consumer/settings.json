@@ -1,0 +1,6 @@
+{
+  "defaultProvider": "ollama",
+  "defaultModel": "just-consumer-qwen3.6:latest",
+  "defaultThinkingLevel": "off",
+  "quietStartup": true
+}

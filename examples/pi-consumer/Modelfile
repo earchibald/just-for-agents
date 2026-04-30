@@ -1,0 +1,11 @@
+FROM qwen3.6:latest
+
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER num_ctx 32768
+
+SYSTEM """
+You are a concise local utility assistant.
+Prefer exact tool use over long freeform answers.
+Do not invent capabilities.
+"""

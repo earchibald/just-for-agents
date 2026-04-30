@@ -204,27 +204,28 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 	}
 
 	function buildRecipeArguments(tool: ManifestTool, args: Record<string, string>) {
-		const recipeArgs: string[] = [];
-		let skippedOptional: string | undefined;
+		const parameters = tool.parameters ?? [];
+		let lastProvidedIndex = -1;
 
-		for (const parameter of tool.parameters ?? []) {
-			if (!hasOwn(args, parameter.name)) {
-				if (parameter.default !== undefined && skippedOptional === undefined) {
-					skippedOptional = parameter.name;
-				}
-				continue;
+		for (const [index, parameter] of parameters.entries()) {
+			if (hasOwn(args, parameter.name)) {
+				lastProvidedIndex = index;
 			}
-
-			if (skippedOptional) {
-				throw new Error(
-					`Cannot pass ${parameter.name} without also passing ${skippedOptional}; just recipe parameters are positional by default.`,
-				);
-			}
-
-			recipeArgs.push(args[parameter.name]);
 		}
 
-		return recipeArgs;
+		if (lastProvidedIndex === -1) {
+			return [];
+		}
+
+		return parameters.slice(0, lastProvidedIndex + 1).map((parameter) => {
+			if (hasOwn(args, parameter.name)) {
+				return args[parameter.name];
+			}
+			if (parameter.default !== undefined) {
+				return parameter.default;
+			}
+			throw new Error(`Missing required parameter for ${tool.name}: ${parameter.name}`);
+		});
 	}
 
 	pi.registerCommand("consumer-refresh", {
@@ -280,7 +281,7 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "just_run",
 		label: "Just Run",
-		description: "Execute a recipe from the current just schema",
+		description: "Execute a recipe from the current just schema. For research, rounds means new rounds to append now.",
 		parameters: Type.Object({
 			recipe: Type.String({ description: "Recipe name from just schema" }),
 			args: Type.Optional(
@@ -322,11 +323,16 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			const result = runJust(ctx.cwd, ["escalate", params.prompt]);
-			const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim() || "(no output)";
+			requireSuccess(result, "just escalate");
+			const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+			const currentManifest = refreshManifest(ctx.cwd);
+			persistState();
+			const refreshMessage = `Consumer schema refreshed (${(currentManifest.tools ?? []).length} tools).`;
 			return {
-				content: [{ type: "text", text: output }],
+				content: [{ type: "text", text: output ? `${output}\n\n${refreshMessage}` : refreshMessage }],
 				details: {
 					exitCode: result.status ?? 1,
+					toolCount: (currentManifest.tools ?? []).length,
 				},
 			};
 		},
@@ -393,6 +399,10 @@ Consumer mode rules:
 - Treat just schema as the authoritative API surface.
 - Pass just_run arguments by schema parameter name, but remember the extension executes just recipe parameters positionally.
 - For example, for md5(file), call just_run with args like {"file": "/path/to/file"} and let the extension run \`just md5 /path/to/file\`.
+- When keyed args skip an optional parameter that has a schema default, the extension fills that default automatically before executing the positional just recipe.
+- For the research recipe, \`rounds\` means how many new rounds to run in this invocation, not a retry count for round 1 and not a total-to-date target.
+- If the user asks for one research iteration or one more round, call research with \`{"rounds": "1"}\` and let the recipe append the next round automatically.
+- When a research request clearly maps to the existing research recipe, run it directly instead of asking whether the user wants the next numbered round.
 - If no recipe fits, call just_escalate.
 
 Startup UI branding and guidance are for the user interface only and should not be repeated unless relevant.
