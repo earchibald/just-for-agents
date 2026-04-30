@@ -54,8 +54,8 @@ PARAMETER num_ctx 32768
 
 SYSTEM """
 You are a concise local utility assistant.
-Prefer exact tool use over long freeform answers.
-Do not invent capabilities.
+Your runtime exposes a narrow, project-defined toolset; treat that toolset as the entire capability surface and do not assume access to a shell, filesystem, or other ad-hoc tools.
+Prefer exact tool use over long freeform answers, and do not invent capabilities the toolset does not provide.
 """
 ```
 
@@ -149,10 +149,10 @@ On `before_agent_start`, the extension should inject:
 
 - the Consumer role instructions
 - a compact summary of available recipes from the cached schema
-- the rule that raw shell/file-edit tools are out of bounds in Consumer mode
+- a clear statement that the four Consumer tools are the entire toolset (rather than scolding the model for shell/edit/write usage that is already impossible)
 - optional personality-affinity instructions derived from the profile
 
-On `tool_call`, the extension should block raw `bash`, `edit`, and `write` if Consumer mode is active. The model should use Consumer tools only.
+The primary mechanism for the toolset restriction is `pi.setActiveTools(CONSUMER_TOOLS)` on `session_start`, which removes `bash`, `edit`, `write`, and any other non-Consumer tools from the model's available tool list. As defense-in-depth, the extension also installs a `tool_call` hook that blocks `bash`, `edit`, and `write` if Consumer mode is active — but the model should never see those tool names in the first place.
 
 On `turn_start` or `session_start`, the extension should persist its cached state with `pi.appendEntry()` so resumed sessions restore the manifest and mode cleanly.
 
@@ -178,7 +178,7 @@ The model should see a tiny toolset:
 4. Execute without shell interpolation
 5. Return structured stdout/stderr/exit information
 
-This is important: the Consumer Agent should **not** improvise shell commands. It should only call the documented API surface emitted by `just schema`. The tool call can still use named fields like `{ "file": "/path/to/file" }`, but the extension must translate those into positional `just` argv such as `just md5 /path/to/file`.
+This is important: because the Consumer Agent has no shell tool available, it cannot improvise shell commands even if it wanted to — it must call the documented API surface emitted by `just schema`. The tool call can still use named fields like `{ "file": "/path/to/file" }`, but the extension must translate those into positional `just` argv such as `just md5 /path/to/file`.
 
 For the `research` recipe specifically, `rounds` should be treated as the number of **new** rounds to append in the current invocation. If the user asks for "1 iteration" or "one more round", the Consumer should call `research` with `rounds='1'` and let the recipe continue from the latest completed round automatically.
 
@@ -308,11 +308,15 @@ export default function (pi: ExtensionAPI) {
     return {
       systemPrompt:
         event.systemPrompt +
-        "\n\nYou are the Consumer Agent. Use only just_schema, just_run, just_refresh, and just_escalate. " +
-        "Never parse the Justfile source. Never use raw bash, edit, or write in Consumer mode."
+        "\n\nYou are the Consumer Agent. Your only tools are just_schema, just_run, just_refresh, and just_escalate — " +
+        "no shell, file-edit, or write tools are available. The Justfile is the entire capability surface; " +
+        "call just_schema instead of parsing the Justfile source directly."
     };
   });
 
+  // Defense-in-depth: setActiveTools above already removes bash/edit/write
+  // from the model's tool list. This hook is a belt-and-braces guard in case
+  // the active-tools restriction is ever bypassed.
   pi.on("tool_call", async (event) => {
     if (consumerMode && ["bash", "edit", "write"].includes(event.toolName)) {
       return { block: true, reason: "Consumer mode only allows just-for-agents tools." };
