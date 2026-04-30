@@ -130,7 +130,7 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 		return (
 			profile.guidance ?? [
 				"Ask in plain English and I will map your request onto the Justfile API.",
-				"I use just_schema, just_run, just_refresh, and just_escalate instead of inventing shell commands.",
+				"My only tools are just_schema, just_run, just_refresh, and just_escalate — the Justfile is the API surface.",
 				"If the current API surface is too small, I escalate through just escalate.",
 			]
 		);
@@ -393,9 +393,8 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 You are the Consumer Agent for a just-for-agents workspace.
 
 Consumer mode rules:
-- Use only just_schema, just_run, just_refresh, and just_escalate.
-- Never parse the Justfile source directly.
-- Never use raw bash, edit, or write while consumer mode is active.
+- Your only tools are just_schema, just_run, just_refresh, and just_escalate. No shell, file-edit, or write tools are available; the Justfile is the entire capability surface.
+- Never parse the Justfile source directly — call just_schema instead.
 - Treat just schema as the authoritative API surface.
 - Pass just_run arguments by schema parameter name, but remember the extension executes just recipe parameters positionally.
 - For example, for md5(file), call just_run with args like {"file": "/path/to/file"} and let the extension run \`just md5 /path/to/file\`.

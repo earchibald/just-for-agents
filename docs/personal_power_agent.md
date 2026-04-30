@@ -119,7 +119,7 @@ Expected behavior:
 
 1. Pi uses the local Qwen Consumer model
 2. the extension restricts the model to `just_schema`, `just_run`, `just_refresh`, and `just_escalate`
-3. the model maps your request onto `just` recipes instead of inventing shell commands
+3. with shell, file-edit, and write tools removed from its toolset, the model maps your request onto `just` recipes — the Justfile is the entire capability surface it sees
 4. if the current API is insufficient, it escalates through `just escalate`
 
 When `just escalate` runs in a shell with `tmux` available, it creates or reuses the fixed tmux session `just-for-agents-escalate`, starts the Senior Agent in a prompt-derived window, and tells you how to attach. In iTerm2, it also attempts to open a tmux control-mode window automatically; later reattach with `tmux attach-session -t just-for-agents-escalate`.
