@@ -1,2 +1,72 @@
-# just-for-agents
-Providing high-capacity coding agents a declarative standard to create and maintain project workflows. Enabling lightweight, local models to parse user intent and 'Do The Right Thing' through a minimal tool-calling interface.
+# **just-for-agents**
+
+**just-for-agents** turns your Justfiles into the API for the agentic era. It treats documentation comments as the source of truth for tool-use instructions, allowing agents to "self-skill" by reading and maintaining their own command interfaces.  
+It is designed to be model-agnostic: use heavy-duty LLMs to architect your workflows and lightweight local models to execute them. If it’s a tool for a human in the CLI, just-for-agents makes it a building block for an agent.
+
+## **⚡️ The Core Philosophy**
+
+Traditional agentic tool-use often requires heavy JSON schemas, brittle API wrappers, or complex MCP (Model Context Protocol) implementations. just-for-agents suggests a simpler way:
+
+1. **Documentation is Data:** The comments above your just recipes aren't just for humans; they are the "Description" field for the agent's tool-call.  
+2. **The Justfile is the Manifest:** A single file defines the entire capability surface of a project.  
+3. **Self-Skilling:** Agents can be tasked not just with *using* the file, but with *extending* it—adding new recipes to solve new problems as they encounter them.
+
+## **🛠 How It Works**
+
+### **1\. The Multi-Directional Workflow**
+
+* **Architectural Maintenance:** High-capacity coding agents (e.g., Claude 3.5 Sonnet, GPT-4o) are used to create, refactor, and maintain the Justfile. They ensure recipes are idempotent, safe, and well-documented.  
+* **Intent Execution:** Lightweight, local tool-using models (e.g., Llama 3, Mistral, Phi-3) parse the Justfile to understand user intent. Because just handles the shell complexity, the model only needs to map intent to the correct recipe and arguments.
+
+### **2\. The Documentation Standard**
+
+just-for-agents treats the just comment syntax as a formal schema.  
+\# List all active database migrations  
+\# @param target: The environment to check (default: 'dev')  
+\# @usage: Use this when you need to verify if the schema is up to date.  
+list-migrations target="dev":  
+    echo "Checking migrations for {{target}}..."  
+    ./scripts/db-check.sh {{target}}
+
+## **🚀 Getting Started**
+
+### **Prerequisites**
+
+* [just](https://github.com/casey/just) installed on your system.  
+* An agent or LLM interface capable of reading local files and executing shell commands.
+
+### **Installation**
+
+*(To be completed: Installation steps for the just-for-agents parser/utility)*  
+\# Example installation  
+pip install just-for-agents
+
+### **Basic Usage**
+
+*(To be completed: Detailed CLI or Library usage examples)*  
+\# Instruct an agent to learn the local environment  
+just-for-agents \--summarize
+
+## **📋 Standardized Instruction Set (Spec)**
+
+To ensure interoperability, just-for-agents follows these conventions:
+
+* **The Discovery Pattern:** Agents should always run just \--list or just-for-agents \--scan upon entering a directory.  
+* **The Argument Contract:** All variables in recipes should have sensible defaults or clear descriptions in the comments.  
+* **Safety First:** Destructive commands (e.g., rm, drop-db) must be explicitly tagged with @danger in the comments to trigger agent confirmation.
+
+## **🗺 Roadmap**
+
+* \[ \] **Automated Tool-Calling Bridge:** Auto-generate JSON schemas from Justfiles for OpenAI/Anthropic tool-use formats.  
+* \[ \] **Local LLM Integration:** Optimized prompts for small models to parse Justfiles without context overflow.  
+* \[ \] **Self-Mutation Logic:** Patterns for agents to safely "write back" to the Justfile to add new skills.  
+* \[ \] **Validation Suite:** A linter to ensure Justfile comments meet the just-for-agents spec.
+
+## **🤝 Contributing**
+
+We welcome contributions\! If you have ideas for making CLI tools more agent-friendly, please open an issue or a PR.
+
+## **📄 License**
+
+*(To be completed: e.g., MIT or Apache 2.0)*  
+**just-for-agents** — *Because your CLI is already an API, your agent just doesn't know it yet.*

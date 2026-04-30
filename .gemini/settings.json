@@ -1,0 +1,14 @@
+{
+  "hooksConfig": {
+    "disabled": [
+      "/Users/earchibald/.vibe-island/bin/vibe-island-bridge --source gemini",
+      "/Users/earchibald/.vibe-island/bin/vibe-island-bridge --source gemini",
+      "/Users/earchibald/.vibe-island/bin/vibe-island-bridge --source gemini",
+      "/Users/earchibald/.vibe-island/bin/vibe-island-bridge --source gemini",
+      "/Users/earchibald/.vibe-island/bin/vibe-island-bridge --source gemini",
+      "/Users/earchibald/.vibe-island/bin/vibe-island-bridge --source gemini",
+      "/Users/earchibald/.vibe-island/bin/vibe-island-bridge --source gemini",
+      "# op-obsidian-session-end\n'/Users/earchibald/.op-obsidian/hooks/session-end.sh'"
+    ]
+  }
+}
