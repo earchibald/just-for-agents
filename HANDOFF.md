@@ -1,33 +1,34 @@
-# Handoff: just-for-agents
+# Handoff: just-for-agents (Post-Round 4)
 
 ## 🚀 Project Vision: RADICALLY SIMPLE
 This project transforms a standard `Justfile` into a discoverable, self-skilling API for AI agents.
-- **Output is the API**: Use `just` (schema) for discovery.
+- **Output is the API**: Use `just schema` for discovery.
 - **Documentation is Data**: Use `[doc('')]` for tool metadata.
-- **Single-File Core**: The entire framework (parser, protocol, tools) is encapsulated in the `Justfile`.
+- **Single-File Core**: The entire framework is encapsulated in the `Justfile`.
 
 ## 🛠 Current State
-- **Core Implementation**: The `Justfile` contains an inlined Python bridge (`_bridge`) that parses `just --list` output into a machine-readable JSON schema.
-- **Self-Skilling Loop**:
-    - `add-tool`: Allows agents to append new recipes to the Justfile.
-    - `remove-tool`: Allows agents to surgically delete recipes using an inlined Python script (`_deskilling`).
-- **Guardrails**: Core protocol recipes (`schema`, `bootstrap`, `add-tool`, etc.) are protected from modification or deletion via strict `RESTRICTED` checks.
-- **Testing Infrastructure**: A dogfooded `test-agent` recipe allows running autonomous tests in isolated sandboxes using `gemini`, `copilot`, or `opencode`.
+- **Core Implementation**: Inlined Python bridge (`_bridge`) parses `just --list` into machine-readable JSON.
+- **Local Model Support**: `Qwen 3.6` (via Ollama) is a first-class consumer model. 
+- **Tooling**:
+    - `opencode-add-ollama-model`: Automates local model configuration.
+    - `test-agent`: Validates agents in sandboxes (supports gemini, copilot, opencode).
+- **Documentation**: Comprehensive guides in `docs/` and `docs/annexes/`.
 
-## 📊 Testing History
-Detailed reports are available in the `docs/` directory:
-- **Round 1**: Validated the core loop and fixed the `sed`-based removal logic.
-- **Round 2**: Proven multi-recipe workflows, environment isolation, and meta-extension.
-- **Round 3**: Validated "Lower-Intelligence" models (Flash, Haiku). Discovered that Edge/Local models (Gemma) excel as **Consumers** but struggle as **Creators**.
+## 🎯 Immediate Next Steps: Reference & Integration
+The documentation and local model support are solid. Next:
 
-## 🎯 Immediate Next Steps: The Escalation Path
-The project has pivoted to a **Consumer vs. Creator** model:
-1. **The Consumer**: A local/edge agent that uses the `schema` to provide an NLP interface to existing tools.
-2. **The Creator**: A senior architect agent (like Gemini Pro) that implements new capabilities.
-3. **Task**: Build an **Escalation Tool** recipe that allows a Consumer agent to identify a missing capability and request a "Skill Upgrade" from a Senior agent.
+### 1. Reference Consumer (The "Just-Chat" Shell)
+Create a simple script or `just` recipe that demonstrates a Consumer Agent interaction.
+- **Logic**: NLP prompt -> `just schema` -> tool execution.
+
+### 2. Exporting the Skill
+Develop `just export-skill <format>` to package the `Justfile` for Gemini Skills or MCP.
+
+### 3. Multi-Model Benchmarking
+Use `test-agent` to evaluate other local models (Llama 3.2, DeepSeek) and refine the "Rules of Engagement" in the `_bridge` manifest.
 
 ## 📂 Key Files
-- `Justfile`: The single source of truth and API surface.
-- `GEMINI.md`: Core project mandates.
-- `docs/`: Testing reports and strategy.
-- `tests/`: Versioned test protocols.
+- `Justfile`: The single source of truth.
+- `docs/personal_power_agent.md`: Main user guide.
+- `docs/annexes/consumer_agent.md`: Qwen/Local model details.
+- `docs/round_4_report.md`: Detailed work log.

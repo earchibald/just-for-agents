@@ -78,24 +78,26 @@
         exit 1
     fi
 
-[doc('@desc Run an autonomous agent test in a sandbox
+[doc("@desc Run an autonomous agent test in a sandbox
 @param name The name of the test scenario
 @param prompt The instruction to give the agent
 @param agent The agent CLI to use (gemini, copilot, opencode)
-@param model Optional model string for the agent
-@usage Use this to validate agent capabilities against the Justfile.')]
+@param model Optional model string (e.g. 'ollama/qwen3.6:latest' for opencode)
+@usage just test-agent name='qwen-test' prompt='Say hello' agent='opencode' model='ollama/qwen3.6:latest'")]
 @test-agent name prompt agent='gemini' model='':
     #!/usr/bin/env bash
-    echo "Setting up sandbox for test: {{name}}"
-    rm -rf /tmp/just-test-{{name}}
-    mkdir -p /tmp/just-test-{{name}}
-    cp Justfile /tmp/just-test-{{name}}/
-    echo "RADICALLY SIMPLE. Use ONLY 'just' recipes. Run 'just bootstrap' then 'just'." > /tmp/just-test-{{name}}/GEMINI.md
+    echo "--- SANDBOX SETUP ---"
+    SANDBOX="/tmp/just-test-{{name}}"
+    echo "Target: $SANDBOX"
+    rm -rf "$SANDBOX"
+    mkdir -p "$SANDBOX"
+    cp Justfile "$SANDBOX/"
+    echo "RADICALLY SIMPLE. Use ONLY 'just' recipes. Run 'just bootstrap' then 'just'." > "$SANDBOX/GEMINI.md"
     
     FULL_PROMPT="{{prompt}} Verify changes by running 'just schema' and ensure it succeeds."
     
-    echo "Running {{agent}} in sandbox..."
-    cd /tmp/just-test-{{name}}
+    echo "--- EXECUTION: {{agent}} ({{model}}) ---"
+    cd "$SANDBOX"
     
     case "{{agent}}" in
         gemini)
@@ -118,6 +120,7 @@
             exit 1
             ;;
     esac
+    echo "--- TEST COMPLETE ---"
 
 [doc('@desc Request a skill upgrade from a Senior Agent
 @param prompt The description of the missing capability or tool needed
@@ -165,6 +168,7 @@ _bridge:
         "project": "just-for-agents",
         "principle": "RADICALLY SIMPLE",
         "rules_of_engagement": [
+            "MANDATORY: Use ONLY 'just' recipes for all system interactions.",
             "Prefix recipes or lines with '@' to suppress command echoing.",
             "Use curly-brace syntax for argument substitution.",
             "Documentation lives in [doc('@desc ...')] attributes.",
@@ -236,6 +240,44 @@ _bridge:
 
     print(json.dumps(parse(), indent=2))
 
-[doc('@desc Calculate the MD5 hash of a file')]
+[doc("@desc Add an Ollama model to the opencode configuration
+@param model The name of the model in ollama (e.g. qwen3.6:latest)
+@param display_name Optional display name for the model
+@usage just opencode-add-ollama-model qwen3.6:latest 'Qwen 3.6'")]
+opencode-add-ollama-model model display_name='':
+    #!/usr/bin/env bash
+    if ! ollama list | grep -qw "{{model}}"; then
+        echo "ERROR: Model '{{model}}' not found in ollama. Please run 'ollama pull {{model}}' first."
+        exit 1
+    fi
+    CONFIG="$HOME/.config/opencode/opencode.json"
+    [ ! -f "$CONFIG" ] && { echo "Error: opencode config not found at $CONFIG"; exit 1; }
+    DNAME="{{display_name}}"
+    [ -z "$DNAME" ] && DNAME="{{model}}"
+    jq --arg m "{{model}}" --arg n "$DNAME" '.provider.ollama.models += {($m): {"name": $n}}' "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
+    echo "SUCCESS: Added {{model}} to opencode configuration."
+    opencode models ollama
+
+[doc("@desc Find files >1MB in a directory and create a timestamped zip archive.
+@param dir The directory to search (defaults to '.')
+@usage just archive-large dir='downloads'")]
+archive-large dir='.':
+    #!/usr/bin/env bash
+    command -v zip >/dev/null 2>&1 || { echo >&2 "ERROR: zip is not installed."; exit 1; }
+    FILES=$(find "{{dir}}" -maxdepth 1 -type f -size +1M)
+    if [ -z "$FILES" ]; then echo "No files larger than 1MB found."; exit 0; fi
+    zip "archive_$(date +%Y%m%d_%H%M%S).zip" $FILES
+
+[doc("@desc Calculate the MD5 hash of a file (cross-platform)
+@param file The path to the file to hash
+@usage just md5 path/to/file.txt")]
 md5 file:
-    @if [ "$(uname)" = "Darwin" ]; then md5 -q {{file}}; else md5sum {{file}} | cut -d" " -f1; fi
+    #!/usr/bin/env bash
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum "{{file}}"
+    elif command -v md5 >/dev/null 2>&1; then
+        md5 -r "{{file}}"
+    else
+        echo "ERROR: No md5 tool found." >&2
+        exit 1
+    fi
