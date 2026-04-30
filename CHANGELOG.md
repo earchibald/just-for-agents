@@ -14,7 +14,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 ### Changed
 
-- Started modularizing the root `Justfile` by moving helper implementations into `./.just-for-agents/` while preserving the existing public recipe surface in the root file.
+- Started modularizing the root `Justfile` by moving helper implementations into `./.just-for-agents/` and splitting recipe bodies into focused external `protocol.just`, `agent.just`, `research.just`, and `utility.just` files while preserving the existing public recipe surface in the root file.
 
 ## [0.1.0] - 2026-04-30
 
