@@ -7,6 +7,10 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed `@schema`, `@bootstrap`, and `@version` so recipe-level `@` no longer combines with step-level `@` and accidentally toggles command echoing back on.
+
 ## [0.1.0] - 2026-04-30
 
 ### Added

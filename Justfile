@@ -2,23 +2,23 @@
 @usage Use this to get a machine-readable map of available tools.
 @returns json')]
 @schema:
-    @just _bridge
+    just _bridge
 
 [doc('@desc Bootstrap an agent into this workspace
 @usage Run this when an agent first enters the project.')]
 @bootstrap:
-    @echo "AGENT INSTRUCTIONS:"
-    @echo "1. This project uses 'just-for-agents'. Run 'just' to discover the API."
-    @echo "2. Use 'add-tool' to persist new capabilities."
-    @echo "3. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
-    @echo "4. Agents supporting LSPs should run 'just install-lsp' and use 'just-lsp'."
-    @echo "5. Update CHANGELOG.md before stopping if you changed the repository."
-    @echo "6. You are now authorized to manage this Justfile as your primary toolset."
+    echo "AGENT INSTRUCTIONS:"
+    echo "1. This project uses 'just-for-agents'. Run 'just' to discover the API."
+    echo "2. Use 'add-tool' to persist new capabilities."
+    echo "3. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
+    echo "4. Agents supporting LSPs should run 'just install-lsp' and use 'just-lsp'."
+    echo "5. Update CHANGELOG.md before stopping if you changed the repository."
+    echo "6. You are now authorized to manage this Justfile as your primary toolset."
 
 [doc('@desc Print the current project version
 @usage Run this to display the current just-for-agents version.')]
 @version:
-    @cat VERSION
+    cat VERSION
 
 [doc("@desc Add a new tool to the Justfile
 @param name The name of the new recipe
@@ -254,7 +254,7 @@ _bridge:
         "principle": "RADICALLY SIMPLE",
         "rules_of_engagement": [
             "MANDATORY: Use ONLY 'just' recipes for all system interactions.",
-            "Prefix recipes or lines with '@' to suppress command echoing.",
+            "Use '@recipe:' or prefix individual lines with '@' to suppress command echoing, but do not combine both in the same recipe.",
             "Use curly-brace syntax for argument substitution.",
             "Documentation lives in [doc('@desc ...')] attributes.",
             "Agents can extend the API using the 'add-tool' recipe.",
