@@ -9,7 +9,8 @@ PROJECT_PI_DIR="$REPO_ROOT/.pi"
 EXT_DIR="$PROJECT_PI_DIR/extensions"
 MODELS_TARGET="$PI_AGENT_DIR/models.json"
 MODELS_SOURCE="$EXAMPLE_DIR/models.json"
-MODEL_ID="just-consumer-qwen3.6:latest"
+CONSUMER_MODEL_ID="just-consumer-qwen3.6:latest"
+RESEARCH_MODEL_ID="just-research-qwen3.6:latest"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -24,8 +25,13 @@ require_cmd ollama
 
 mkdir -p "$PI_AGENT_DIR" "$EXT_DIR"
 
-echo "==> Building Ollama model: $MODEL_ID"
-ollama create "$MODEL_ID" -f "$EXAMPLE_DIR/Modelfile"
+echo "==> Building Ollama model: $CONSUMER_MODEL_ID"
+ollama create "$CONSUMER_MODEL_ID" -f "$EXAMPLE_DIR/Modelfile"
+
+if [ -f "$EXAMPLE_DIR/ResearchModelfile" ]; then
+  echo "==> Building Ollama model: $RESEARCH_MODEL_ID"
+  ollama create "$RESEARCH_MODEL_ID" -f "$EXAMPLE_DIR/ResearchModelfile"
+fi
 
 if [ -f "$MODELS_TARGET" ]; then
   cp "$MODELS_TARGET" "$MODELS_TARGET.bak"

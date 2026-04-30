@@ -59,6 +59,14 @@ From the root of this repo:
 ollama create just-consumer-qwen3.6:latest -f examples/pi-consumer/Modelfile
 ```
 
+### 2a. Build the local Research model
+
+If you want `just research` to prefer a research-tuned local model, also build:
+
+```bash
+ollama create just-research-qwen3.6:latest -f examples/pi-consumer/ResearchModelfile
+```
+
 ### 3. Register the model with Pi
 
 For a fresh Pi setup:
@@ -126,6 +134,20 @@ When `just escalate` runs in a shell with `tmux` available, it creates or reuses
 
 Research runs use the same visible-agent tmux interface. When `just research` launches a round with `tmux` available, it creates or reuses the fixed session `just-for-agents-research`, opens a prompt-derived window, and prints the matching attach command before waiting for the round to finish. Research requests are incremental: `rounds='1'` appends one new round for that subject instead of retrying round 1.
 
+## 🛠 Process Feedback: Making Shell + tmux Less Awful
+
+After live testing, the most effective process changes are:
+
+1. **Split model roles**: keep the Consumer model chat-oriented and use a separate research-tuned model for `just research`.
+2. **Prefer helper recipes over inline shell tricks**: temp config generation, result validation, and summary extraction are now private helper recipes instead of fragile inline one-liners.
+3. **Use an isolated scratch workspace for research**: the agent now gets a single `RESEARCH_TASK.md` file instead of free roaming through the repo from the first turn.
+4. **Validate outputs instead of trusting them**: research rounds now validate the result and retry once instead of silently accepting conversational fallbacks.
+5. **Use built-in runtime helpers instead of ad-hoc tmux commands**:
+   - `just research-status subject_id='ways-to-improve-the-research-tool'`
+   - `just research-reset`
+
+The goal is to make the debugging loop about **research behavior**, not shell quoting, temp-file templates, or manual tmux archaeology.
+
 ### 7. Refresh after changing the Justfile
 
 If `just_escalate` adds or removes recipes, the Consumer extension now refreshes its cached schema automatically after the escalation succeeds.
@@ -146,7 +168,8 @@ Or reload all project resources:
 
 | File | Purpose |
 | --- | --- |
-| `examples/pi-consumer/Modelfile` | Creates the custom Ollama model alias |
+| `examples/pi-consumer/Modelfile` | Creates the Consumer Agent Ollama model alias |
+| `examples/pi-consumer/ResearchModelfile` | Creates the research-tuned Ollama model alias |
 | `examples/pi-consumer/models.json` | Registers the Ollama model with Pi |
 | `examples/pi-consumer/settings.json` | Sets the project-local default model/provider |
 | `examples/pi-consumer/just-consumer.ts` | Enforces the Consumer Agent contract in Pi |

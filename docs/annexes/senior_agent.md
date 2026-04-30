@@ -12,6 +12,7 @@ The **Senior Creator Agent** is the architect of the system. It is invoked via t
 When invoked via `escalate`, the Senior Agent receives a prompt describing the missing capability. It MUST:
 
 1. **Examine**: Read the current `Justfile` to understand existing patterns and constraints.
+   - When the Just LSP is available, use it for Justfile navigation and symbol-aware edits instead of relying only on raw text search.
 2. **Design**: Create a robust shell script or command that fulfills the request.
 3. **Implement**: Use the `just add-tool` recipe to persist the change.
 4. **Verify**: Run `just schema` to ensure the new tool is discoverable.

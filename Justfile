@@ -89,6 +89,19 @@ research subject_title rounds='3' source='' subject_id='' model='':
 list-research:
     just --justfile ./.just-for-agents/research.just list-research
 
+[doc("@desc Show the latest research tmux/log status
+@param subject_id Optional subject slug to inspect the latest saved round
+@param lines Number of trailing lines to show from logs/output (default 120)
+@usage just research-status
+@usage just research-status subject_id='ways-to-improve-the-research-tool'")]
+research-status subject_id='' lines='120':
+    just --justfile ./.just-for-agents/research.just research-status "{{subject_id}}" "{{lines}}"
+
+[doc("@desc Reset the research tmux session
+@usage just research-reset")]
+research-reset:
+    just --justfile ./.just-for-agents/research.just research-reset
+
 [doc("@desc Resolve a usable model for the research recipe
 @param requested Optional provider/model string or Ollama model name
 @usage just research-model

@@ -47,6 +47,17 @@ pip install just-for-agents
 \# Instruct an agent to learn the local environment  
 just-for-agents \--summarize
 
+### **Operational Helpers**
+
+For tmux-backed research runs, use the built-in runtime helpers instead of ad-hoc shell inspection:
+
+```bash
+just research-status subject_id='ways-to-improve-the-research-tool'
+just research-reset
+```
+
+If you use local Ollama aliases, keep the **consumer** and **research** roles separate. A chat-oriented Consumer model can power Pi, while `just research` can prefer a dedicated research-tuned model such as `just-research-qwen3.6:latest`.
+
 ### **Versioning**
 
 The canonical project version lives in the root `VERSION` file and follows semantic versioning.
