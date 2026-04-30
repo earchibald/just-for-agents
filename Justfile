@@ -130,62 +130,7 @@
 
 [private]
 _visible-agent session_suffix window_hint label runner:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    SESSION="just-for-agents-{{session_suffix}}"
-    WINDOW_BASE=$(python3 -c 'import re, sys; text = sys.argv[1]; slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-"); print((slug or "task")[:24])' "{{window_hint}}")
-    WINDOW_NAME="${WINDOW_BASE}-$(date +%H%M)"
-    RUNNER="{{runner}}"
-    LABEL="{{label}}"
-    [ -x "$RUNNER" ] || { echo "ERROR: runner is not executable: $RUNNER" >&2; exit 1; }
-    if command -v tmux >/dev/null 2>&1; then
-        RUN_ROOT="${TMPDIR:-/tmp}/just-for-agents"
-        RUN_ID="$(date +%Y%m%d-%H%M%S)"
-        LOG_FILE="$RUN_ROOT/{{session_suffix}}-$RUN_ID.log"
-        STATUS_FILE="$RUN_ROOT/{{session_suffix}}-$RUN_ID.status"
-        mkdir -p "$RUN_ROOT"
-        RUNNER_Q=$(printf '%q' "$RUNNER")
-        LOG_Q=$(printf '%q' "$LOG_FILE")
-        STATUS_Q=$(printf '%q' "$STATUS_FILE")
-        TMUX_CMD="set -uo pipefail; $RUNNER_Q 2>&1 | tee $LOG_Q; status=\${PIPESTATUS[0]}; printf '%s\n' \"\$status\" > $STATUS_Q; exit \"\$status\""
-        TMUX_CMD_Q=$(printf '%q' "$TMUX_CMD")
-        if tmux has-session -t "$SESSION" 2>/dev/null; then
-            TARGET=$(tmux new-window -d -P -F '#{session_name}:#{window_index}' -t "$SESSION" -n "$WINDOW_NAME" "bash -lc $TMUX_CMD_Q")
-        else
-            TARGET=$(tmux new-session -d -P -F '#{session_name}:#{window_index}' -s "$SESSION" -n "$WINDOW_NAME" "bash -lc $TMUX_CMD_Q")
-        fi
-        tmux set-window-option -t "$TARGET" remain-on-exit on >/dev/null
-        echo "$LABEL is running in tmux session '$SESSION', window '$WINDOW_NAME'." >&2
-        ATTACH_CMD="tmux attach-session -t $SESSION"
-        CLIENT_COUNT=$(tmux list-clients -t "$SESSION" 2>/dev/null | wc -l | awk '{print $1}' || printf '0\n')
-        if [ "${TERM_PROGRAM:-}" = "iTerm.app" ] && [ "${CLIENT_COUNT:-0}" -eq 0 ] && command -v osascript >/dev/null 2>&1; then
-            CC_ATTACH_CMD="tmux -CC attach-session -t $SESSION"
-            CC_ATTACH_CMD_OSA=$(printf '%s' "$CC_ATTACH_CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
-            if osascript \
-                -e 'tell application id "com.googlecode.iterm2"' \
-                -e 'activate' \
-                -e "create window with default profile command \"$CC_ATTACH_CMD_OSA\"" \
-                -e 'end tell' >/dev/null 2>&1; then
-                echo "Opened iTerm2 tmux control-mode window for session '$SESSION'." >&2
-            else
-                echo "Unable to launch iTerm2 tmux control mode automatically." >&2
-            fi
-        fi
-        echo "Attach with: $ATTACH_CMD" >&2
-        echo "Focus this run with: tmux select-window -t $TARGET" >&2
-        while [ ! -f "$STATUS_FILE" ]; do
-            sleep 1
-        done
-        STATUS=$(cat "$STATUS_FILE")
-        cat "$LOG_FILE"
-        if [ "$STATUS" -ne 0 ]; then
-            echo "$LABEL failed. Reattach to inspect: tmux attach-session -t $SESSION" >&2
-            exit "$STATUS"
-        fi
-        exit 0
-    fi
-    echo "tmux not found. Running $LABEL directly..." >&2
-    "$RUNNER"
+    bash ./.just-for-agents/visible-agent.sh "{{session_suffix}}" "{{window_hint}}" "{{label}}" "{{runner}}"
 
 [doc('@desc Request a skill upgrade from a Senior Agent
 @param prompt The description of the missing capability or tool needed
@@ -215,115 +160,11 @@ _visible-agent session_suffix window_hint label runner:
 
 # Private de-skilling logic (Inlined Python)
 _deskilling name:
-    #!/usr/bin/env python3
-    import os, re
-    target = "{{name}}"
-    with open('Justfile', 'r') as f:
-        lines = f.readlines()
-    
-    new_lines = []
-    skip = False
-    for i, line in enumerate(lines):
-        # Match [doc( and ensure the next line starts with the target recipe name
-        if "[doc(" in line and i + 1 < len(lines) and re.match(rf"^{target}(\s|:)", lines[i+1].strip()):
-            skip = True
-            continue
-        if skip:
-            # If we are in skip mode, continue skipping until we hit a non-indented line that isn't the target
-            if re.match(rf"^{target}(\s|:)", line.strip()):
-                continue
-            if line.startswith('    '):
-                continue
-            skip = False
-        new_lines.append(line)
-        
-    with open('Justfile', 'w') as f:
-        f.writelines(new_lines)
+    python3 ./.just-for-agents/deskill.py "{{name}}"
 
 # Private bridge logic (Inlined Python)
 _bridge:
-    #!/usr/bin/env python3
-    import sys, json, re, subprocess
-    from pathlib import Path
-
-    VERSION = Path("VERSION").read_text().strip() if Path("VERSION").exists() else None
-
-    MANIFEST = {
-        "project": "just-for-agents",
-        "version": VERSION,
-        "principle": "RADICALLY SIMPLE",
-        "rules_of_engagement": [
-            "MANDATORY: Use ONLY 'just' recipes for all system interactions.",
-            "Use '@recipe:' or prefix individual lines with '@' to suppress command echoing, but do not combine both in the same recipe.",
-            "Use curly-brace syntax for argument substitution.",
-            "Documentation lives in [doc('@desc ...')] attributes.",
-            "Agents can extend the API using the 'add-tool' recipe.",
-            "Linux users: review https://github.com/terror/just-lsp before using install-lsp."
-        ]
-    }
-
-    def parse():
-        output = subprocess.check_output(["just", "--list", "--unsorted"]).decode()
-        recipes = []
-        current_docs = {}
-        param_docs = {}
-        
-        def add_doc(tag, content):
-            if tag == "param":
-                match = re.match(r"(\w+)(?:=(['\"].*?['\"]|\S+))?\s+(.*)", content)
-                if match:
-                    p_name, p_default, p_desc = match.groups()
-                    param_docs[p_name] = {"desc": p_desc}
-                    if p_default: param_docs[p_name]["default"] = p_default.strip("'\"")
-            elif tag == "usage":
-                if tag not in current_docs: current_docs[tag] = []
-                current_docs[tag].append(content)
-            else:
-                current_docs[tag] = content
-
-        for line in output.splitlines():
-            line = line.strip()
-            if line.startswith("# @"):
-                match = re.match(r"# @(\w+)\s+(.*)", line)
-                if match: add_doc(match.group(1), match.group(2))
-                continue
-            if line and not line.startswith("Available recipes"):
-                parts = line.split()
-                if not parts: continue
-                recipe_name = parts[0]
-                if recipe_name in ["schema", "_bridge", "_deskilling", "bootstrap", "test-agent", "install-lsp"]:
-                    current_docs = {}; param_docs = {}
-                    continue
-                if "#" in line:
-                    recipe_part, comment_part = line.split("#", 1)
-                    match = re.search(r"@(\w+)\s+(.*)", comment_part)
-                    if match: add_doc(match.group(1), match.group(2))
-                    elif "desc" not in current_docs: current_docs["desc"] = comment_part.strip()
-                    recipe_part = recipe_part.strip()
-                else: recipe_part = line.strip()
-                if not recipe_part: continue
-                parts = recipe_part.split()
-                name = parts[0]
-                params = []
-                for p in parts[1:]:
-                    param_info = {"name": p, "required": True}
-                    if p.startswith("*"): param_info["name"] = p[1:]; param_info["variadic"] = True
-                    if "=" in p:
-                        p_name, default = p.split("=", 1)
-                        param_info["name"] = p_name
-                        param_info["default"] = default.strip("'\"")
-                        param_info["required"] = False
-                    if param_info["name"] in param_docs:
-                        doc = param_docs[param_info["name"]]
-                        param_info["description"] = doc["desc"]
-                        if "default" in doc and "default" not in param_info:
-                            param_info["default"] = doc["default"]; param_info["required"] = False
-                    params.append(param_info)
-                recipes.append({"name": name, "parameters": params, "docs": current_docs})
-                current_docs = {}; param_docs = {}
-        return {"manifest": MANIFEST, "tools": recipes}
-
-    print(json.dumps(parse(), indent=2))
+    python3 ./.just-for-agents/bridge.py
 
 [doc("@desc Add an Ollama model to the opencode configuration
 @param model The name of the model in ollama (e.g. qwen3.6:latest)
@@ -416,6 +257,10 @@ research subject_title rounds='3' source='' subject_id='' model='':
     if [ -z "$SUB_ID" ]; then
         SUB_ID=$(echo "$SUBJECT_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
     fi
+    WORKSPACE_ROOT="$(pwd -P)"
+    normalize_workspace_path() {
+        python3 -c 'import os, sys; path = sys.argv[1]; root = sys.argv[2]; print(path if path in ("", "none") else os.path.normpath(path if os.path.isabs(path) else os.path.join(root, path)))' "$1" "$WORKSPACE_ROOT"
+    }
     RDIR="docs/research/$SUB_ID"
     mkdir -p "$RDIR"
     BRIEF="$RDIR/brief.md"
@@ -466,6 +311,7 @@ research subject_title rounds='3' source='' subject_id='' model='':
         echo "## Research constraints"
         echo "- Use only files that actually exist."
         echo "- Do not assume AGENTS.md or RTK.md exist."
+        echo "- Treat workspace file paths as local paths, not URLs."
         echo "- External web/search tools are optional; if they fail, continue with local analysis and note the limitation."
         echo
         echo "## Provided source"
@@ -493,18 +339,32 @@ research subject_title rounds='3' source='' subject_id='' model='':
         if [ "$r" -gt 1 ] && [ -f "$RDIR/round_$((r-1)).md" ]; then
             PREV_ROUND="$RDIR/round_$((r-1)).md"
         fi
+        BRIEF_ABS="$(normalize_workspace_path "$BRIEF")"
+        PREV_ROUND_ABS="$(normalize_workspace_path "$PREV_ROUND")"
+        RFILE_ABS="$(normalize_workspace_path "$RFILE")"
+        ROUND_INPUTS="$RDIR/round_${r}_inputs.json"
+        ROUND_INPUTS_ABS="$(normalize_workspace_path "$ROUND_INPUTS")"
+        python3 -c 'import json, sys; output_path, workspace_root, brief_path, previous_round_path, output_round_path = sys.argv[1:6]; data = {"workspace_root": workspace_root, "inputs": [{"label": "brief_file", "kind": "local_workspace_path", "path": brief_path}, {"label": "previous_round_file", "kind": "local_workspace_path" if previous_round_path != "none" else "none", "path": None if previous_round_path == "none" else previous_round_path}, {"label": "output_round_file", "kind": "local_workspace_path", "path": output_round_path}], "validation_rules": ["Only strings beginning with http:// or https:// should be treated as URLs.", "Absolute or relative workspace paths are local files and must never be passed to URL-only tools.", "If a tool expects a URL, validate the input first and use a local file read/search tool for workspace paths instead."]}; open(output_path, "w", encoding="utf-8").write(json.dumps(data, indent=2) + "\n")' "$ROUND_INPUTS" "$WORKSPACE_ROOT" "$BRIEF_ABS" "$PREV_ROUND_ABS" "$RFILE_ABS"
         INVOCATION_ROUND=$((r - LAST_EXISTING_ROUND))
         printf -v PROMPT '%s\n' \
             "Research Subject: $SUBJECT_TITLE" \
             "Round: $r (invocation round $INVOCATION_ROUND of $ROUNDS)" \
-            "Brief file: $BRIEF" \
-            "Previous round file: $PREV_ROUND" \
+            "Workspace root: $WORKSPACE_ROOT" \
+            "Validation file: $ROUND_INPUTS_ABS" \
+            "Brief file: $BRIEF_ABS" \
+            "Previous round file: $PREV_ROUND_ABS" \
+            "Output round file: $RFILE_ABS" \
             "" \
             "Task:" \
             "- Operate fully autonomously in this non-interactive batch run." \
             "- Do not ask clarifying questions, request confirmation, or pause to describe your plan." \
             "- If context is incomplete or ambiguous, make the best reasonable assumption, note it in the report, and continue." \
-            "- Read the brief file and any existing research round files that are relevant." \
+            "- Read the validation file first, then read the brief file and any existing research round files that are relevant." \
+            "- The validation file is authoritative for path handling. Inputs marked as local_workspace_path are local files, not URLs." \
+            "- Before using any tool, classify the input as either URL or local workspace path." \
+            "- Only inputs beginning with http:// or https:// are URLs. All prompt-provided file paths are local workspace paths." \
+            "- Never pass local workspace paths to URL-only tools such as web fetch or Exa web fetch. Use local read/search tools for those paths." \
+            "- If a URL-only tool rejects an input because it is a local path, recover immediately with a local file tool and continue without asking the user." \
             "- Prefer `just --list`, `just schema`, targeted searches, and partial file reads over reading very large files end-to-end." \
             "- If a file read is truncated, incomplete, or too large, recover by re-reading only the relevant sections instead of abandoning the round." \
             "- If repository context degrades, continue with the best evidence you have and record the limitation; do not switch into a conversational 'what would you like me to do next?' mode." \
@@ -570,42 +430,7 @@ research subject_title rounds='3' source='' subject_id='' model='':
 
 [private]
 _research-index:
-    #!/usr/bin/env python3
-    from pathlib import Path
-    import re
-
-    root = Path("docs/research")
-    root.mkdir(parents=True, exist_ok=True)
-    index = root / "index.md"
-    lines = ["# Research Index", ""]
-
-    for subject_dir in sorted(path for path in root.iterdir() if path.is_dir()):
-        round_files = []
-        for candidate in subject_dir.glob("round_*.md"):
-            match = re.match(r"round_(\d+)\.md$", candidate.name)
-            if match:
-                round_files.append((int(match.group(1)), candidate))
-        round_files.sort(key=lambda item: item[0])
-        if not round_files:
-            continue
-
-        title = subject_dir.name.replace("-", " ")
-        brief = subject_dir / "brief.md"
-        if brief.exists():
-            match = re.search(r"^# Research Brief: (.+)$", brief.read_text(), re.MULTILINE)
-            if match:
-                title = match.group(1).strip()
-
-        lines.append(f"## {title} ({subject_dir.name})")
-        for round_number, round_file in round_files:
-            summary = "Research round complete."
-            for line in round_file.read_text().splitlines():
-                if line.startswith("SUMMARY:"):
-                    summary = line.split("SUMMARY:", 1)[1].strip() or summary
-            lines.append(f"- [Round {round_number}]({round_file.as_posix()}): {summary}")
-        lines.append("")
-
-    index.write_text("\n".join(lines).rstrip() + "\n")
+    python3 ./.just-for-agents/research-index.py
 
 [doc('@desc List all research subjects')]
 list-research :

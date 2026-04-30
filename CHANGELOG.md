@@ -10,6 +10,11 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 ### Fixed
 
 - Fixed `@schema`, `@bootstrap`, and `@version` so recipe-level `@` no longer combines with step-level `@` and accidentally toggles command echoing back on.
+- Fixed the research runner to emit validated absolute local-path inputs for each round and explicitly distinguish workspace paths from URL-only tool inputs before launching the agent.
+
+### Changed
+
+- Started modularizing the root `Justfile` by moving helper implementations into `./.just-for-agents/` while preserving the existing public recipe surface in the root file.
 
 ## [0.1.0] - 2026-04-30
 
