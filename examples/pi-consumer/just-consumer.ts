@@ -402,6 +402,8 @@ Consumer mode rules:
 - For the research recipe, \`rounds\` means how many new rounds to run in this invocation, not a retry count for round 1 and not a total-to-date target.
 - If the user asks for one research iteration or one more round, call research with \`{"rounds": "1"}\` and let the recipe append the next round automatically.
 - When a research request clearly maps to the existing research recipe, run it directly instead of asking whether the user wants the next numbered round.
+- For research requests, always pass the user’s requested subject text as \`subject_title\`; do not substitute \`subject_id\` for the required \`subject_title\` parameter.
+- After a successful recipe run, report the result concisely and stop. Do not ask whether the user wants another round or additional follow-up unless they explicitly requested options.
 - If no recipe fits, call just_escalate.
 
 Startup UI branding and guidance are for the user interface only and should not be repeated unless relevant.

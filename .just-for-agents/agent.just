@@ -50,7 +50,7 @@ escalate prompt:
     2. Use 'add-tool' to implement the missing capability.
     3. Ensure the new tool is robust and follows the project's RADICALLY SIMPLE principle.
     4. Verify the new tool appears in 'just schema'."
-    RUNNER=$(mktemp "${TMPDIR:-/tmp}/just-for-agents-escalate.XXXXXX.sh")
+    RUNNER=$(mktemp "${TMPDIR%/}/just-for-agents-escalate.XXXXXX")
     trap 'rm -f "$RUNNER"' EXIT
     WORKDIR_Q=$(printf '%q' "$PWD")
     PROMPT_Q=$(printf '%q' "$PROMPT_TEXT")
