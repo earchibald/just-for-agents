@@ -17,6 +17,10 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 - Added dry-run/result capture plus browser-ready review and dashboard rendering for quarantined managed recipe requests, including new `managed-dry-run`, `managed-review`, and `managed-dashboard` operator commands on both the managed overlay and the public Just surface (JFA-84).
 - Hardened the managed governance flow so bootstrap guidance now explains the quarantine-first posture, the dashboard/review surfaces report managed-history drift, and `managed-approve` / `managed-render-include` refuse to overwrite direct edits under the governed approved surface (JFA-85).
 
+### Fixed
+
+- Set the agent-facing `schema` recipe as the explicit `[default]` entrypoint so bare `just` deterministically returns the machine-readable discovery manifest without depending on recipe order, and documented `just --list` as the human-readable listing path.
+
 ## [0.3.0] - 2026-04-30
 
 ### Changed

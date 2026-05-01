@@ -2,7 +2,7 @@
 # The include is regenerated from approved/recipes/ on every approval; the
 # import is optional so a fresh checkout works before `just managed-bootstrap`.
 import? '.just-for-agents/managed/approved/includes/managed.just'
-
+[default]
 [doc('@desc Generate a JSON tool schema from the Justfile
 @usage Use this to get a machine-readable map of available tools.
 @returns json')]
