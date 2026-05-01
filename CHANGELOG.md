@@ -10,6 +10,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 ### Added
 
 - Added `docs/annexes/just_manual_audit.md` ledger and recorded section `1.6.3 Invoking Multiple Recipes` as suitable with caveats: multi-recipe argv and `--one` are upstream cautionary context only, while agent-facing integrations should continue to issue one validated recipe per tool call (JFA-6).
+- Added a design spec for a governed managed-recipe overlay with quarantine, human approval, git-backed audit history, and a hybrid terminal-plus-browser operator surface.
 
 ## [0.3.0] - 2026-04-30
 
@@ -35,6 +36,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 - Changed research launches to attach the full task bundle as a file to `opencode run`, and fixed the attachment argument order so the task message is not misread as a file path.
 - Changed the startup bundle to include recent round summaries instead of raw previous-round transcripts, reducing contamination from stale tool chatter and bad path references.
 - Changed research launches to run in an isolated scratch workspace containing only `RESEARCH_TASK.md`, reducing repo-file drift during autonomous rounds.
+
 ## [0.2.0] - 2026-04-30
 
 ### Fixed
