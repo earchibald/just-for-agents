@@ -15,6 +15,15 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 - Added `docs/annexes/just_manual_audit.md` ledger and recorded section `1.6.3 Invoking Multiple Recipes` as suitable with caveats: multi-recipe argv and `--one` are upstream cautionary context only, while agent-facing integrations should continue to issue one validated recipe per tool call (JFA-6).
 - Added a design spec for a governed managed-recipe overlay with quarantine, human approval, git-backed audit history, and a hybrid terminal-plus-browser operator surface.
+- Added the managed-overlay foundation: a new `just_for_agents/` Python package (`managed_paths`, `request_store`, and a `python -m just_for_agents` CLI), a `.just-for-agents/managed.just` partition, and root-level `managed-bootstrap`, `managed-queue`, and `managed-inspect` recipes so quarantined requests land in a single auditable layout discoverable via `just schema` (JFA-81).
+- Added the approval core: `just_for_agents/projection.py` rebuilds `approved/includes/managed.just` deterministically, `just_for_agents/history.py` initializes a dedicated managed git repo and records one commit plus one decision-ledger entry per approval, and the new `managed-render-include` and `managed-approve` recipes plus an optional root-Justfile `import?` make approved managed recipes the only live include surface (JFA-82).
+- Added quarantined mutation staging for managed recipes: `managed-new`, `managed-edit`, and `managed-delete` now create request artifacts through `just_for_agents/mutations.py`, `just escalate` stages candidate capability work into the queue instead of publishing directly, and README/testing coverage documents the managed review flow (JFA-83).
+- Added dry-run/result capture plus browser-ready review and dashboard rendering for quarantined managed recipe requests, including new `managed-dry-run`, `managed-review`, and `managed-dashboard` operator commands on both the managed overlay and the public Just surface (JFA-84).
+- Hardened the managed governance flow so bootstrap guidance now explains the quarantine-first posture, the dashboard/review surfaces report managed-history drift, and `managed-approve` / `managed-render-include` refuse to overwrite direct edits under the governed approved surface (JFA-85).
+
+### Fixed
+
+- Set the agent-facing `schema` recipe as the explicit `[default]` entrypoint so bare `just` deterministically returns the machine-readable discovery manifest without depending on recipe order, and documented `just --list` as the human-readable listing path.
 
 ## [0.3.0] - 2026-04-30
 

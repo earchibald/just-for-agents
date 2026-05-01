@@ -47,9 +47,9 @@ escalate prompt:
     COPILOT_BIN="$(command -v copilot)"
     PROMPT_TEXT="You are a Senior Creator Agent. A junior agent needs a skill upgrade: '{{prompt}}'.
     1. Examine the current Justfile.
-    2. Use 'add-tool' to implement the missing capability.
-    3. Ensure the new tool is robust and follows the project's RADICALLY SIMPLE principle.
-    4. Verify the new tool appears in 'just schema'."
+    2. Stage the change with 'managed-new', 'managed-edit', or 'managed-delete' so it lands in the quarantined managed queue instead of the live Just surface.
+    3. Ensure the candidate recipe is robust and follows the project's RADICALLY SIMPLE principle.
+    4. Verify the request is visible in 'just managed-queue' and that unapproved recipes do not leak into 'just schema'."
     RUNNER=$(mktemp "${TMPDIR%/}/just-for-agents-escalate.XXXXXX")
     trap 'rm -f "$RUNNER"' EXIT
     WORKDIR_Q=$(printf '%q' "$PWD")

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# Managed overlay state is operator-local; the layout is materialized on
+# demand by `just managed-bootstrap`.
+.just-for-agents/managed/

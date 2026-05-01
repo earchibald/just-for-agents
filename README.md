@@ -58,6 +58,27 @@ just research-reset
 
 If you use local Ollama aliases, keep the **consumer** and **research** roles separate. A chat-oriented Consumer model can power Pi, while `just research` can prefer a dedicated research-tuned model such as `just-research-qwen3.6:latest`.
 
+### **Managed Recipe Queue**
+
+Managed non-core recipe mutations now stage through the quarantined queue instead of publishing directly into the live Just surface.
+
+```bash
+just managed-bootstrap
+just managed-new recipe_name='hello' command='echo hi' desc='Say hi'
+just managed-edit recipe_name='hello'
+just managed-delete recipe_name='hello'
+just managed-queue
+just managed-inspect req-20260501-001
+just managed-dry-run req-20260501-001
+just managed-review req-20260501-001
+just managed-dashboard
+just managed-approve req-20260501-001 operator='you' rationale='reviewed'
+```
+
+`just managed-bootstrap` only creates the governed overlay and keeps the workspace in a **quarantine-first** posture. Until a request is approved, it stays under `.just-for-agents/managed/quarantine/requests/` and does **not** appear in `just schema` or `just --list`.
+
+`just managed-dashboard` reports whether the managed-history-backed approved surface is `uninitialized`, `clean`, or `drifted`. Direct edits under `.just-for-agents/managed/approved/` are treated as drift, and `managed-approve` / `managed-render-include` refuse to overwrite that state until the operator restores it from managed history or imports it into a formal request. `just escalate` follows the same quarantined path, so escalated capability work lands in the review queue first.
+
 ### **Versioning**
 
 The canonical project version lives in the root `VERSION` file and follows semantic versioning.
@@ -72,7 +93,7 @@ Release notes live in `CHANGELOG.md`, and git tags use the matching `vX.Y.Z` for
 
 To ensure interoperability, just-for-agents follows these conventions:
 
-* **The Discovery Pattern:** Agents should start with `just schema` (or bare `just` when it defaults to `schema`) for machine-readable discovery. Use `just --list` for a human-readable recipe overview instead of parsing the `Justfile` source directly.  
+* **The Discovery Pattern:** Agents should start with bare `just` (explicitly bound to `just schema`) or run `just schema` directly for machine-readable discovery. Use `just --list` when they need the human-readable recipe catalog instead of parsing the `Justfile` source directly.  
 * **The Argument Contract:** All variables in recipes should have sensible defaults or clear descriptions in the comments.  
 * **Safety First:** Destructive commands (e.g., rm, drop-db) must be explicitly tagged with @danger in the comments to trigger agent confirmation.
 

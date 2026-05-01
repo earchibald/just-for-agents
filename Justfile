@@ -1,3 +1,8 @@
+# Approved managed recipes become live by importing the generated include.
+# The include is regenerated from approved/recipes/ on every approval; the
+# import is optional so a fresh checkout works before `just managed-bootstrap`.
+import? '.just-for-agents/managed/approved/includes/managed.just'
+[default]
 [doc('@desc Generate a JSON tool schema from the Justfile
 @usage Use this to get a machine-readable map of available tools.
 @returns json')]
@@ -14,18 +19,18 @@
 @version:
     just --justfile ./.just-for-agents/protocol.just version
 
-[doc("@desc Add a new tool to the Justfile
+[doc("@desc Add a protected core tool directly to the root Justfile
 @param name The name of the new recipe
 @param command The shell command to execute
 @param desc a short description
 @param params Optional parameters (e.g. arg1 arg2=val)
-@usage Use this to expand the agent API surface.")]
+@usage Use this only for protected protocol maintenance; normal managed recipes should use managed-new.")]
 @add-tool name command desc='' params='':
     just --justfile ./.just-for-agents/protocol.just add-tool "{{name}}" "{{command}}" "{{desc}}" "{{params}}"
 
-[doc('@desc Remove a tool from the Justfile
+[doc('@desc Remove a protected core tool from the root Justfile
 @param name The name of the recipe to remove
-@usage Use this to clean up unused or deprecated tools.')]
+@usage Use this only for protected protocol maintenance; normal managed recipes should use managed-delete.')]
 @remove-tool name:
     just --justfile ./.just-for-agents/protocol.just remove-tool "{{name}}"
 
@@ -60,6 +65,90 @@ opencode-add-ollama-model model display_name='':
 @usage just opencode-enable-exa-mcp")]
 opencode-enable-exa-mcp:
     just --justfile ./.just-for-agents/research.just opencode-enable-exa-mcp
+
+[doc('@desc Bootstrap the managed recipe governance overlay
+@usage Run once to materialize the quarantine-first .just-for-agents/managed/ scaffolding. Idempotent.')]
+@managed-bootstrap:
+    just --justfile ./.just-for-agents/managed.just bootstrap
+
+[doc('@desc List quarantined managed-recipe change requests
+@usage just managed-queue
+@returns text')]
+@managed-queue:
+    just --justfile ./.just-for-agents/managed.just queue
+
+[doc("@desc Print one quarantined request as JSON
+@param request_id The request id (e.g. req-20260501-001)
+@usage just managed-inspect req-20260501-001
+@returns json")]
+@managed-inspect request_id:
+    just --justfile ./.just-for-agents/managed.just inspect "{{request_id}}"
+
+[doc("@desc Capture a quarantined dry-run preview for one request
+@param request_id The request id (e.g. req-20260501-001)
+@usage just managed-dry-run req-20260501-001
+@returns json")]
+@managed-dry-run request_id:
+    just --justfile ./.just-for-agents/managed.just dry-run "{{request_id}}"
+
+[doc("@desc Render an HTML review page for one quarantined request
+@param request_id The request id (e.g. req-20260501-001)
+@usage just managed-review req-20260501-001
+@returns json")]
+@managed-review request_id:
+    just --justfile ./.just-for-agents/managed.just review "{{request_id}}"
+
+[doc('@desc Render the managed operator dashboard, including managed-history drift status
+@usage just managed-dashboard
+@returns text')]
+@managed-dashboard:
+    just --justfile ./.just-for-agents/managed.just dashboard
+
+[doc("@desc Stage a new managed recipe in the quarantined review queue
+@param recipe_name The managed recipe name to create
+@param command The recipe body command(s)
+@param desc Optional @desc metadata for the candidate recipe
+@param params Optional recipe parameter list (e.g. target='' force='false')
+@param author Optional operator label recorded on the request
+@param review_notes Optional freeform notes stored on the request
+@usage just managed-new recipe_name='hello' command='echo hi'
+@returns json")]
+@managed-new recipe_name command desc='' params='' author='' review_notes='':
+    just --justfile ./.just-for-agents/managed.just new "{{recipe_name}}" "{{command}}" "{{desc}}" "{{params}}" "{{author}}" "{{review_notes}}"
+
+[doc("@desc Clone an approved managed recipe into a quarantined edit request
+@param recipe_name The approved managed recipe name
+@param author Optional operator label recorded on the request
+@param review_notes Optional freeform notes stored on the request
+@usage just managed-edit recipe_name='hello'
+@returns json")]
+@managed-edit recipe_name author='' review_notes='':
+    just --justfile ./.just-for-agents/managed.just edit "{{recipe_name}}" "{{author}}" "{{review_notes}}"
+
+[doc("@desc Stage a quarantined delete request for an approved managed recipe
+@param recipe_name The approved managed recipe name
+@param author Optional operator label recorded on the request
+@param review_notes Optional freeform notes stored on the request
+@usage just managed-delete recipe_name='hello'
+@returns json")]
+@managed-delete recipe_name author='' review_notes='':
+    just --justfile ./.just-for-agents/managed.just delete "{{recipe_name}}" "{{author}}" "{{review_notes}}"
+
+[doc("@desc Rebuild the approved managed-recipe include when the governed surface is clean
+@usage Use this to verify or repair the generated include after normal managed approvals; direct edits under approved/ are treated as drift.
+@returns text")]
+@managed-render-include:
+    just --justfile ./.just-for-agents/managed.just render-include
+
+[doc("@desc Approve a quarantined request, projecting it into the live include if managed history is clean
+@param request_id The request id to approve (e.g. req-20260501-001)
+@param operator Optional operator label recorded in the decision ledger
+@param rationale Optional rationale recorded in the decision ledger
+@usage just managed-approve req-20260501-001
+@usage just managed-approve req-20260501-001 operator='earchibald' rationale='reviewed candidate'
+@returns json")]
+@managed-approve request_id operator='' rationale='':
+    just --justfile ./.just-for-agents/managed.just approve "{{request_id}}" "{{operator}}" "{{rationale}}"
 
 [doc("@desc Find files >1MB in a directory and create a timestamped zip archive.
 @param dir The directory to search (defaults to '.')

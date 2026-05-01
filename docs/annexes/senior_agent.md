@@ -14,8 +14,8 @@ When invoked via `escalate`, the Senior Agent receives a prompt describing the m
 1. **Examine**: Read the current `Justfile` to understand existing patterns and constraints.
    - When the Just LSP is available, use it for Justfile navigation and symbol-aware edits instead of relying only on raw text search.
 2. **Design**: Create a robust shell script or command that fulfills the request.
-3. **Implement**: Use the `just add-tool` recipe to persist the change.
-4. **Verify**: Run `just schema` to ensure the new tool is discoverable.
+3. **Implement**: Use `just managed-new`, `just managed-edit`, or `just managed-delete` to stage the change in quarantine instead of publishing directly; `managed-bootstrap` only creates the quarantine-first overlay.
+4. **Verify**: Run `just managed-queue`, `just managed-dashboard`, and `just schema` to ensure the request is staged, the managed-history-backed approved surface is clean or still uninitialized, and unapproved tools stay undiscoverable.
 5. **Document**: Update `CHANGELOG.md` before stopping if the repo changed.
 
 ### Example: Skill Upgrade Prompt
@@ -44,11 +44,11 @@ Every new tool MUST include high-quality metadata using the `[doc('')]` attribut
 ## 🧪 Validation Workflow
 
 Senior Agents should follow this cycle when adding a tool:
-1. **Draft**: Formulate the `just add-tool` call.
+1. **Draft**: Formulate the `just managed-new` or `just managed-edit` call.
 2. **Execute**: Apply the change.
-3. **Audit**: Run `just schema` and verify the JSON output matches expectations.
+3. **Audit**: Run `just managed-queue`, `just managed-dashboard`, and `just schema`, verifying the request exists, the managed approved surface is not drifted, and the live schema stays unchanged until approval.
 4. **Document**: Record notable repo changes in `CHANGELOG.md`.
 5. **Test**: (Optional) Run the newly created tool to verify behavior.
 
 ## 🔄 Self-Correction
-If `add-tool` fails due to syntax errors (e.g., unescaped quotes in multi-line scripts), the Senior Agent is expected to use its high reasoning to diagnose the `Justfile` corruption and fix it manually or via `remove-tool`.
+If a managed mutation request fails due to syntax errors (for example, malformed multi-line recipe bodies), the Senior Agent is expected to diagnose the candidate recipe, restage it through the managed queue, and keep the live Just surface unchanged until approval. If `just managed-dashboard` reports drift on the managed approved surface, repair or import that state instead of overwriting it by hand.
