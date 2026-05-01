@@ -12,6 +12,7 @@ from .dry_run import (
     load_dry_run_result,
     run_request_dry_run,
 )
+from .drift import ManagedDriftError, ManagedSurfaceStatus, ensure_clean_managed_surface, managed_surface_status
 from .history import (
     ApprovalError,
     append_decision,
@@ -42,7 +43,9 @@ from .review import (
 __all__ = [
     "ApprovalError",
     "DryRunError",
+    "ManagedDriftError",
     "ManagedPaths",
+    "ManagedSurfaceStatus",
     "MutationError",
     "Request",
     "RequestStore",
@@ -57,9 +60,11 @@ __all__ = [
     "dashboard_file",
     "dry_run_dir",
     "dry_run_result_file",
+    "ensure_clean_managed_surface",
     "ensure_managed_layout",
     "ensure_managed_repo",
     "load_dry_run_result",
+    "managed_surface_status",
     "render_candidate_recipe",
     "render_dashboard_text",
     "render_include",

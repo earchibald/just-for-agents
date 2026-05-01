@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .dry_run import load_dry_run_result
+from .drift import ManagedSurfaceStatus, managed_surface_status
 from .managed_paths import ManagedPaths
 from .request_store import RequestStore
 
@@ -100,6 +101,10 @@ def _page(title: str, body: str) -> str:
     pre {{ background: #f8fafc; border: 1px solid #d9e2ec; padding: 1rem; overflow-x: auto; }}
     .summary {{ background: #f0f4f8; border-left: 4px solid #486581; padding: 0.75rem 1rem; margin: 1rem 0 2rem; }}
     .status-pill {{ display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; background: #d9e2ec; }}
+    .surface-status {{ padding: 0.75rem 1rem; margin: 1rem 0 2rem; border-left: 4px solid #486581; background: #f0f4f8; }}
+    .surface-status.uninitialized {{ border-left-color: #486581; }}
+    .surface-status.clean {{ border-left-color: #2f855a; background: #f0fff4; }}
+    .surface-status.drifted {{ border-left-color: #d69e2e; background: #fffbea; }}
     .diff {{ overflow-x: auto; }}
     .diff table {{ font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.9rem; }}
   </style>
@@ -109,6 +114,39 @@ def _page(title: str, body: str) -> str:
 </body>
 </html>
 """
+
+
+def _managed_surface_html(status: ManagedSurfaceStatus) -> str:
+    details = (
+        "<ul>{items}</ul>".format(
+            items="".join(f"<li>{escape(detail)}</li>" for detail in status.details)
+        )
+        if status.details
+        else ""
+    )
+    changed_paths = (
+        "<p><strong>Changed paths:</strong></p><ul>{items}</ul>".format(
+            items="".join(
+                f"<li><code>{escape(path)}</code></li>" for path in status.changed_paths
+            )
+        )
+        if status.changed_paths
+        else ""
+    )
+    return (
+        f'<div class="surface-status {escape(status.status)}">'
+        f"<strong>Managed history:</strong> {escape(status.status)}<br>"
+        f"{escape(status.summary)}"
+        f"</div>{details}{changed_paths}"
+    )
+
+
+def _managed_surface_lines(status: ManagedSurfaceStatus) -> list[str]:
+    lines = ["Managed history", "---------------", f"{status.status}\t{status.summary}"]
+    lines.extend(status.details)
+    if status.changed_paths:
+        lines.append("Paths: " + ", ".join(status.changed_paths))
+    return lines
 
 
 def write_request_review(
@@ -123,6 +161,7 @@ def write_request_review(
     request = store.get(request_id)
     if request is None:
         raise ReviewError(f"unknown request: {request_id}")
+    surface_status = managed_surface_status(paths)
 
     request_dir = store.request_dir(request_id)
     review_path = request_review_file(paths, request_id)
@@ -203,6 +242,9 @@ def write_request_review(
   </tbody>
 </table>
 
+<h2>Managed history</h2>
+{_managed_surface_html(surface_status)}
+
 <h2>Candidate artifact</h2>
 <pre>{escape(candidate or tombstone or '(no candidate artifact recorded)')}</pre>
 
@@ -224,6 +266,7 @@ def write_request_review(
         "request_id": request_id,
         "review_path": str(review_path),
         "generated_at": moment.isoformat(),
+        "managed_surface": surface_status.to_dict(),
         "dry_run_result_path": (
             str((request_dir / "dry-run" / "result.json"))
             if (request_dir / "dry-run" / "result.json").is_file()
@@ -235,6 +278,7 @@ def write_request_review(
 def render_dashboard_text(paths: ManagedPaths, store: RequestStore) -> str:
     """Render the terminal-oriented managed operator dashboard summary."""
 
+    surface_status = managed_surface_status(paths)
     queue_rows = [
         (
             request.request_id,
@@ -259,10 +303,7 @@ def render_dashboard_text(paths: ManagedPaths, store: RequestStore) -> str:
             )
         )
 
-    lines = [
-        "Queue",
-        "-----",
-    ]
+    lines = _managed_surface_lines(surface_status) + ["", "Queue", "-----"]
     if queue_rows:
         lines.extend(
             f"{request_id}\t{source}\t{targets}\t{dry_run_state}\t{summary}"
@@ -302,6 +343,7 @@ def write_dashboard(
 ) -> dict[str, Any]:
     """Render and persist the operator dashboard HTML companion."""
 
+    surface_status = managed_surface_status(paths)
     queue_rows = [
         (
             request.request_id,
@@ -351,6 +393,9 @@ def write_dashboard(
 <h1>Managed operator dashboard</h1>
 <div class="summary">Queue/library/settings snapshot for the managed recipe governance overlay.</div>
 
+<h2>Managed history</h2>
+{_managed_surface_html(surface_status)}
+
 <h2>Queue</h2>
 <table>
   <thead><tr><th>Request</th><th>Source</th><th>Targets</th><th>Dry-run</th><th>Summary</th></tr></thead>
@@ -375,6 +420,7 @@ def write_dashboard(
     return {
         "dashboard_path": str(target),
         "generated_at": moment.isoformat(),
+        "managed_surface": surface_status.to_dict(),
         "queue_count": len(queue_rows),
         "approved_recipe_count": len(library_rows),
     }

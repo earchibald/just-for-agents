@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .drift import ManagedDriftError, ensure_clean_managed_surface
 from . import projection
 from .managed_paths import ManagedPaths
 from .request_store import Request, RequestStore
@@ -41,7 +42,8 @@ def ensure_managed_repo(paths: ManagedPaths) -> Path:
 
     On first call this runs ``git init`` inside ``managed_root``, configures
     a local identity so commits succeed in hermetic environments, and seeds
-    one "initialize managed overlay" commit so the tree is non-empty.
+    one "initialize managed overlay" commit over the governed approved/history
+    files so later drift checks have a clean baseline.
     Returns the managed repo path.
     """
 
@@ -54,8 +56,7 @@ def ensure_managed_repo(paths: ManagedPaths) -> Path:
         _run_git(repo_dir, "config", "user.name", "just-for-agents managed overlay")
         _run_git(repo_dir, "config", "user.email", "managed-overlay@local")
         _run_git(repo_dir, "config", "commit.gpgsign", "false")
-        _run_git(repo_dir, "add", "-A")
-        # First commit may have nothing to add if the layout is empty; allow it.
+        _run_git(repo_dir, "add", "-A", "--", "approved", "history/decisions.jsonl")
         _run_git(repo_dir, "commit", "--allow-empty", "-m", "initialize managed overlay")
 
     return repo_dir
@@ -77,14 +78,14 @@ def commit_approval(
     action: str,
     message: str | None = None,
 ) -> str:
-    """Stage every change under ``managed_root`` and create one git commit.
+    """Stage the governed approved/history surface and create one git commit.
 
     Returns the resulting short SHA.
     """
 
     repo_dir = ensure_managed_repo(paths)
     subject = message or f"approve {action} from {request_id}"
-    _run_git(repo_dir, "add", "-A")
+    _run_git(repo_dir, "add", "-A", "--", "approved", "history/decisions.jsonl")
     _run_git(repo_dir, "commit", "-m", subject)
     sha = _run_git(repo_dir, "rev-parse", "--short=7", "HEAD").stdout.strip()
     return sha
@@ -131,6 +132,11 @@ def approve_request(
         raise ApprovalError(
             f"request {request_id} is {request.status!r}; only quarantined requests can be approved"
         )
+
+    try:
+        ensure_clean_managed_surface(paths)
+    except ManagedDriftError as exc:
+        raise ApprovalError(str(exc)) from exc
 
     ensure_managed_repo(paths)
 

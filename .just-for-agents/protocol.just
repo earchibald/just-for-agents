@@ -6,11 +6,13 @@
 @bootstrap:
     echo "AGENT INSTRUCTIONS:"
     echo "1. This project uses 'just-for-agents'. Run 'just' to discover the API."
-    echo "2. Use 'managed-new', 'managed-edit', and 'managed-delete' for governed recipe changes; reserve 'add-tool' for protected protocol maintenance."
-    echo "3. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
-    echo "4. Agents supporting LSPs should run 'just install-lsp' and use 'just-lsp' for Justfile navigation and refactors."
-    echo "5. Update CHANGELOG.md before stopping if you changed the repository."
-    echo "6. You are now authorized to manage this Justfile as your primary toolset."
+    echo "2. 'managed-bootstrap' only creates the quarantine-first overlay; managed changes stay out of the live Just surface until 'managed-approve'."
+    echo "3. Use 'managed-new', 'managed-edit', and 'managed-delete' for governed recipe changes; reserve 'add-tool' for protected protocol maintenance."
+    echo "4. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
+    echo "5. Agents supporting LSPs should run 'just install-lsp' and use 'just-lsp' for Justfile navigation and refactors."
+    echo "6. If you touched managed recipes, run 'just managed-dashboard' and 'just schema'; direct edits under approved/ are treated as drift."
+    echo "7. Update CHANGELOG.md before stopping if you changed the repository."
+    echo "8. You are now authorized to manage this Justfile as your primary toolset."
 
 [no-cd]
 @version:
