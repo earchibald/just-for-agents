@@ -1,3 +1,8 @@
+# Approved managed recipes become live by importing the generated include.
+# The include is regenerated from approved/recipes/ on every approval; the
+# import is optional so a fresh checkout works before `just managed-bootstrap`.
+import? '.just-for-agents/managed/approved/includes/managed.just'
+
 [doc('@desc Generate a JSON tool schema from the Justfile
 @usage Use this to get a machine-readable map of available tools.
 @returns json')]
@@ -78,6 +83,22 @@ opencode-enable-exa-mcp:
 @returns json")]
 @managed-inspect request_id:
     just --justfile ./.just-for-agents/managed.just inspect "{{request_id}}"
+
+[doc("@desc Rebuild the approved managed-recipe include from approved/recipes/
+@usage Run after editing approved state by hand or to verify the projection.
+@returns text")]
+@managed-render-include:
+    just --justfile ./.just-for-agents/managed.just render-include
+
+[doc("@desc Approve a quarantined request, projecting it into the live include
+@param request_id The request id to approve (e.g. req-20260501-001)
+@param operator Optional operator label recorded in the decision ledger
+@param rationale Optional rationale recorded in the decision ledger
+@usage just managed-approve req-20260501-001
+@usage just managed-approve req-20260501-001 operator='earchibald' rationale='reviewed candidate'
+@returns json")]
+@managed-approve request_id operator='' rationale='':
+    just --justfile ./.just-for-agents/managed.just approve "{{request_id}}" "{{operator}}" "{{rationale}}"
 
 [doc("@desc Find files >1MB in a directory and create a timestamped zip archive.
 @param dir The directory to search (defaults to '.')

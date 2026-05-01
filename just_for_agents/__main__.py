@@ -5,6 +5,8 @@ Exposes the minimal surface needed by the root Justfile's `managed-*` recipes:
 * ``bootstrap`` — materialize the managed overlay layout, idempotent.
 * ``queue`` — list quarantined change requests (id, source, target recipes).
 * ``inspect <request_id>`` — print one request's full JSON.
+* ``render-include`` — rebuild ``approved/includes/managed.just`` from approved/recipes/.
+* ``approve <request_id>`` — approve a quarantined request, project, commit, ledger.
 """
 
 from __future__ import annotations
@@ -14,7 +16,9 @@ import json
 import sys
 from pathlib import Path
 
+from .history import ApprovalError, approve_request
 from .managed_paths import ensure_managed_layout
+from .projection import write_include
 from .request_store import RequestStore
 
 
@@ -61,6 +65,31 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_render_include(_args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    target = write_include(paths)
+    print(f"rendered {target}")
+    return 0
+
+
+def cmd_approve(args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    store = RequestStore(paths)
+    try:
+        entry = approve_request(
+            paths,
+            store,
+            args.request_id,
+            operator_label=args.operator,
+            rationale=args.rationale,
+        )
+    except ApprovalError as exc:
+        print(f"approval failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(entry, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="just_for_agents")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -72,6 +101,20 @@ def main(argv: list[str] | None = None) -> int:
     inspect = sub.add_parser("inspect", help="print one request as JSON")
     inspect.add_argument("request_id")
     inspect.set_defaults(func=cmd_inspect)
+
+    sub.add_parser(
+        "render-include",
+        help="rebuild approved/includes/managed.just from approved/recipes/",
+    ).set_defaults(func=cmd_render_include)
+
+    approve = sub.add_parser(
+        "approve",
+        help="approve a quarantined request, projecting it into the live include",
+    )
+    approve.add_argument("request_id")
+    approve.add_argument("--operator", default="", help="operator label for the ledger")
+    approve.add_argument("--rationale", default="", help="approval rationale")
+    approve.set_defaults(func=cmd_approve)
 
     args = parser.parse_args(argv)
     return args.func(args)
