@@ -5,7 +5,7 @@
 [no-cd]
 @bootstrap:
     echo "AGENT INSTRUCTIONS:"
-    echo "1. This project uses 'just-for-agents'. Run 'just' to discover the API."
+    echo "1. This project uses 'just-for-agents'. Run 'just schema' (or bare 'just') for machine-readable discovery, and use 'just --list' for a human-readable overview."
     echo "2. Use 'add-tool' to persist new capabilities."
     echo "3. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
     echo "4. Agents supporting LSPs should run 'just install-lsp' and use 'just-lsp' for Justfile navigation and refactors."

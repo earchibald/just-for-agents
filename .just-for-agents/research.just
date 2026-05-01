@@ -315,7 +315,7 @@ research subject_title rounds='3' source='' subject_id='' model='':
             "- Do not try to open repo files or round files by name inside the scratch workspace. Their relevant content is already embedded in RESEARCH_TASK.md." \
             "- NEVER pass local workspace paths to URL-only tools such as web fetch or Exa web fetch. Use local read/search tools for those paths." \
             "- If a URL-only tool rejects an input because it is a local path, recover immediately with a local file tool and continue without asking the user." \
-            "- Prefer 'just --list', 'just schema', glob/search tools, and partial file reads over using bash or reading very large files end-to-end." \
+            "- When repo context requires a discovery command, prefer 'just schema' for machine-readable discovery and 'just --list' for human-readable inspection, then use glob/search tools and partial file reads before falling back to bash." \
             "- Only use the bash tool when simpler local read/search tools cannot do the job." \
             "- If you use the bash tool, you MUST provide both a 'command' string and a short 'description' string or the tool call will fail." \
             "- If a file read is truncated, incomplete, or too large, recover by re-reading only the relevant sections instead of abandoning the round." \

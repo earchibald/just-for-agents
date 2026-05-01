@@ -72,7 +72,7 @@ Release notes live in `CHANGELOG.md`, and git tags use the matching `vX.Y.Z` for
 
 To ensure interoperability, just-for-agents follows these conventions:
 
-* **The Discovery Pattern:** Agents should always run just \--list or just-for-agents \--scan upon entering a directory.  
+* **The Discovery Pattern:** Agents should start with `just schema` (or bare `just` when it defaults to `schema`) for machine-readable discovery. Use `just --list` for a human-readable recipe overview instead of parsing the `Justfile` source directly.  
 * **The Argument Contract:** All variables in recipes should have sensible defaults or clear descriptions in the comments.  
 * **Safety First:** Destructive commands (e.g., rm, drop-db) must be explicitly tagged with @danger in the comments to trigger agent confirmation.
 

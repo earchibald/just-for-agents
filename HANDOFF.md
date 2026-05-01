@@ -2,12 +2,12 @@
 
 ## 🚀 Project Vision: RADICALLY SIMPLE
 This project transforms a standard `Justfile` into a discoverable, self-skilling API for AI agents.
-- **Output is the API**: Use `just schema` for discovery.
+- **Output is the API**: Use `just schema` (or bare `just` when it defaults to `schema`) for machine-readable discovery, and use `just --list` for human-readable inspection.
 - **Documentation is Data**: Use `[doc('')]` for tool metadata.
 - **Single-File Core**: The entire framework is encapsulated in the `Justfile`.
 
 ## 🛠 Current State
-- **Core Implementation**: Inlined Python bridge (`_bridge`) parses `just --list` into machine-readable JSON.
+- **Core Implementation**: Inlined Python bridge (`_bridge`) currently builds the `just schema` manifest by parsing `just --list` output.
 - **Local Model Support**: `Qwen 3.6` (via Ollama) is a first-class consumer model. 
 - **Tooling**:
     - `opencode-add-ollama-model`: Automates local model configuration.
