@@ -62,6 +62,17 @@ class RequestStore:
     def request_file(self, request_id: str) -> Path:
         return self.request_dir(request_id) / "request.json"
 
+    def save(self, request: Request) -> Request:
+        """Persist a request object back to disk."""
+
+        directory = self.request_dir(request.request_id)
+        directory.mkdir(parents=True, exist_ok=True)
+        self.request_file(request.request_id).write_text(
+            json.dumps(request.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return request
+
     def create(
         self,
         *,
@@ -94,11 +105,7 @@ class RequestStore:
 
         directory = self.request_dir(request_id)
         directory.mkdir(parents=True, exist_ok=False)
-        self.request_file(request_id).write_text(
-            json.dumps(request.to_dict(), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        return request
+        return self.save(request)
 
     def get(self, request_id: str) -> Request | None:
         path = self.request_file(request_id)

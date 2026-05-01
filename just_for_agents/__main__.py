@@ -8,6 +8,9 @@ Exposes the minimal surface needed by the root Justfile's `managed-*` recipes:
 * ``new <name>`` — stage a manual-add request with a candidate recipe body.
 * ``edit <name>`` — clone one approved managed recipe into quarantine.
 * ``delete <name>`` — stage a tombstone request for one approved recipe.
+* ``dry-run <request_id>`` — capture a quarantined recipe dry-run preview.
+* ``review <request_id>`` — render one browser-ready review page.
+* ``dashboard`` — print a terminal dashboard and refresh the HTML companion.
 * ``render-include`` — rebuild ``approved/includes/managed.just`` from approved/recipes/.
 * ``approve <request_id>`` — approve a quarantined request, project, commit, ledger.
 """
@@ -19,6 +22,7 @@ import json
 import sys
 from pathlib import Path
 
+from .dry_run import DryRunError, run_request_dry_run
 from .history import ApprovalError, approve_request
 from .managed_paths import ensure_managed_layout
 from .mutations import (
@@ -29,6 +33,7 @@ from .mutations import (
 )
 from .projection import write_include
 from .request_store import RequestStore
+from .review import ReviewError, render_dashboard_text, write_dashboard, write_request_review
 
 
 def _repo_root() -> Path:
@@ -148,6 +153,42 @@ def cmd_render_include(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dry_run(args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    store = RequestStore(paths)
+    try:
+        payload = run_request_dry_run(paths, store, args.request_id)
+    except DryRunError as exc:
+        print(f"dry-run failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_review(args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    store = RequestStore(paths)
+    try:
+        payload = write_request_review(paths, store, args.request_id)
+    except ReviewError as exc:
+        print(f"review failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_dashboard(_args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    store = RequestStore(paths)
+    try:
+        write_dashboard(paths, store)
+        print(render_dashboard_text(paths, store), end="")
+    except ReviewError as exc:
+        print(f"dashboard failed: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def cmd_approve(args: argparse.Namespace) -> int:
     paths = ensure_managed_layout(_repo_root())
     store = RequestStore(paths)
@@ -198,6 +239,22 @@ def main(argv: list[str] | None = None) -> int:
     delete.add_argument("--author", default="", help="operator label for the request")
     delete.add_argument("--review-notes", default="", help="freeform review notes")
     delete.set_defaults(func=cmd_delete)
+
+    dry_run = sub.add_parser(
+        "dry-run",
+        help="capture a quarantined dry-run preview for one request",
+    )
+    dry_run.add_argument("request_id")
+    dry_run.set_defaults(func=cmd_dry_run)
+
+    review = sub.add_parser("review", help="render one request review page")
+    review.add_argument("request_id")
+    review.set_defaults(func=cmd_review)
+
+    sub.add_parser(
+        "dashboard",
+        help="render the managed operator dashboard and refresh the HTML companion",
+    ).set_defaults(func=cmd_dashboard)
 
     sub.add_parser(
         "render-include",
