@@ -30,17 +30,17 @@ list-containers profile="dev":
 ```
 
 ## 3. The Discovery Loop (Output-Based)
-Instead of parsing the `Justfile` source, the agent leverages `just`'s own reflection. Bare `just` is explicitly bound to the `schema` recipe so the zero-argument entrypoint is deterministic and machine-readable. `just --list` remains the human-readable reflection surface and the bridge's raw source of recipe metadata.
+Instead of parsing the `Justfile` source directly, the agent should prefer the exported discovery surfaces. Bare `just` is explicitly bound to the `schema` recipe so the zero-argument entrypoint is deterministic and machine-readable. `just schema` yields the same manifest, while `just --list` remains the human-readable reflection surface and the bridge's raw source of recipe metadata.
 
 ### Discovery Flow
 1. **Reflection**: Agent runs `just` (or `just schema`) to get the machine-readable manifest.
 2. **Listing**: When a human-readable recipe catalog is needed, agent runs `just --list`.
 3. **Scanning**: The bridge scans the `just --list` output for lines starting with `    # @`.
 4. **Mapping**: These lines are mapped to the recipe immediately following them.
-5. **Registration**: The agent registers these as tools with the LLM, using `@usage` as the primary selection criteria.
+5. **Registration**: The bridge emits the JSON returned by `just schema` (and therefore bare `just`), and agents register tools from that machine-readable manifest using `@usage` as the primary selection criteria.
 
 ## 4. Technical Components
-- **API Bridge**: A utility that runs `just --list`, parses the `# @tag` metadata, and emits the JSON returned by `just schema` (and therefore bare `just`).
+- **API Bridge**: A utility that runs `just --list`, parses the `# @tag` metadata, and emits the JSON returned by `just schema` (and therefore bare `just`) (e.g., OpenAI Tool Specs).
 - **Execution Wrapper**: A thin layer that captures `stdout`, `stderr`, and exit codes, re-formatting them into "Agent-Friendly" responses.
 - **Protocol Recipes**: A set of standardized recipes (e.g., `list`, `schema`, `validate`) that define the agent's interaction with the workspace.
 

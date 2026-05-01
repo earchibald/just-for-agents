@@ -233,7 +233,7 @@ Suggested commit shapes:
 
 ### Discovery changes
 
-`just schema` and `just --list` continue to be the discovery contract. They must reflect:
+`just schema` remains the primary machine-readable discovery contract, while `just --list` remains the human-facing inspection surface. Both must reflect:
 
 - protected stable recipes
 - approved managed recipes

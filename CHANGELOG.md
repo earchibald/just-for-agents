@@ -7,6 +7,10 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased]
 
+### Changed
+
+- Reconciled discovery guidance across the repo so `just schema` (and bare `just` where it defaults to `schema`) is the primary machine-readable entry point, while `just --list` is documented as the human-facing inspection surface and current bridge input.
+
 ### Added
 
 - Added `docs/annexes/just_manual_audit.md` ledger and recorded section `1.6.3 Invoking Multiple Recipes` as suitable with caveats: multi-recipe argv and `--one` are upstream cautionary context only, while agent-facing integrations should continue to issue one validated recipe per tool call (JFA-6).

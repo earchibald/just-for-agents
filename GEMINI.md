@@ -4,7 +4,7 @@
 **RADICALLY SIMPLE**
 
 ## Project Mandates
-- **Output is the API**: Leverage `just --list` for discovery. Avoid complex source parsing.
+- **Output is the API**: Use `just schema` as the primary machine-readable discovery surface. Use `just --list` for human-facing inspection, and avoid complex source parsing.
 - **Use the Just LSP**: When working on Justfiles or recipes, prefer `just-lsp`/the Just LSP for navigation and refactors when it is available.
 - **Documentation is Data**: Use standard `[doc()]` attributes to communicate with agents.
 - **Zero Configuration**: A `Justfile` should be all that's needed to start.

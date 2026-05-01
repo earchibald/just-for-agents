@@ -5,7 +5,7 @@
 [no-cd]
 @bootstrap:
     echo "AGENT INSTRUCTIONS:"
-    echo "1. This project uses 'just-for-agents'. Run 'just' to discover the API."
+    echo "1. This project uses 'just-for-agents'. Run 'just' (or 'just schema') for machine-readable discovery, and use 'just --list' for a human-readable overview."
     echo "2. 'managed-bootstrap' only creates the quarantine-first overlay; managed changes stay out of the live Just surface until 'managed-approve'."
     echo "3. Use 'managed-new', 'managed-edit', and 'managed-delete' for governed recipe changes; reserve 'add-tool' for protected protocol maintenance."
     echo "4. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
