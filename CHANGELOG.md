@@ -7,6 +7,10 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased]
 
+### Added
+
+- Added `docs/annexes/just_manual_audit.md` ledger and recorded section `1.6.3 Invoking Multiple Recipes` as suitable with caveats: multi-recipe argv and `--one` are upstream cautionary context only, while agent-facing integrations should continue to issue one validated recipe per tool call (JFA-6).
+
 ### Fixed
 
 - Fixed `@schema`, `@bootstrap`, and `@version` so recipe-level `@` no longer combines with step-level `@` and accidentally toggles command echoing back on.
