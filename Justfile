@@ -67,7 +67,7 @@ opencode-enable-exa-mcp:
     just --justfile ./.just-for-agents/research.just opencode-enable-exa-mcp
 
 [doc('@desc Bootstrap the managed recipe governance overlay
-@usage Run once to materialize .just-for-agents/managed/. Idempotent.')]
+@usage Run once to materialize the quarantine-first .just-for-agents/managed/ scaffolding. Idempotent.')]
 @managed-bootstrap:
     just --justfile ./.just-for-agents/managed.just bootstrap
 
@@ -98,7 +98,7 @@ opencode-enable-exa-mcp:
 @managed-review request_id:
     just --justfile ./.just-for-agents/managed.just review "{{request_id}}"
 
-[doc('@desc Render the managed operator dashboard and refresh its HTML companion
+[doc('@desc Render the managed operator dashboard, including managed-history drift status
 @usage just managed-dashboard
 @returns text')]
 @managed-dashboard:
@@ -134,13 +134,13 @@ opencode-enable-exa-mcp:
 @managed-delete recipe_name author='' review_notes='':
     just --justfile ./.just-for-agents/managed.just delete "{{recipe_name}}" "{{author}}" "{{review_notes}}"
 
-[doc("@desc Rebuild the approved managed-recipe include from approved/recipes/
-@usage Run after editing approved state by hand or to verify the projection.
+[doc("@desc Rebuild the approved managed-recipe include when the governed surface is clean
+@usage Use this to verify or repair the generated include after normal managed approvals; direct edits under approved/ are treated as drift.
 @returns text")]
 @managed-render-include:
     just --justfile ./.just-for-agents/managed.just render-include
 
-[doc("@desc Approve a quarantined request, projecting it into the live include
+[doc("@desc Approve a quarantined request, projecting it into the live include if managed history is clean
 @param request_id The request id to approve (e.g. req-20260501-001)
 @param operator Optional operator label recorded in the decision ledger
 @param rationale Optional rationale recorded in the decision ledger

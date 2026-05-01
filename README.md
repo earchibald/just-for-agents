@@ -63,6 +63,7 @@ If you use local Ollama aliases, keep the **consumer** and **research** roles se
 Managed non-core recipe mutations now stage through the quarantined queue instead of publishing directly into the live Just surface.
 
 ```bash
+just managed-bootstrap
 just managed-new recipe_name='hello' command='echo hi' desc='Say hi'
 just managed-edit recipe_name='hello'
 just managed-delete recipe_name='hello'
@@ -74,7 +75,9 @@ just managed-dashboard
 just managed-approve req-20260501-001 operator='you' rationale='reviewed'
 ```
 
-Until a request is approved, it stays under `.just-for-agents/managed/quarantine/requests/` and does **not** appear in `just schema` or `just --list`. `just escalate` follows the same path, so escalated capability work lands in the review queue first.
+`just managed-bootstrap` only creates the governed overlay and keeps the workspace in a **quarantine-first** posture. Until a request is approved, it stays under `.just-for-agents/managed/quarantine/requests/` and does **not** appear in `just schema` or `just --list`.
+
+`just managed-dashboard` reports whether the managed-history-backed approved surface is `uninitialized`, `clean`, or `drifted`. Direct edits under `.just-for-agents/managed/approved/` are treated as drift, and `managed-approve` / `managed-render-include` refuse to overwrite that state until the operator restores it from managed history or imports it into a formal request. `just escalate` follows the same quarantined path, so escalated capability work lands in the review queue first.
 
 ### **Versioning**
 

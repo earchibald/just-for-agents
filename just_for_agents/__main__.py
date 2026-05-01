@@ -23,6 +23,7 @@ import sys
 from pathlib import Path
 
 from .dry_run import DryRunError, run_request_dry_run
+from .drift import ManagedDriftError, ensure_clean_managed_surface, managed_surface_status
 from .history import ApprovalError, approve_request
 from .managed_paths import ensure_managed_layout
 from .mutations import (
@@ -44,12 +45,15 @@ def _repo_root() -> Path:
 
 def cmd_bootstrap(_args: argparse.Namespace) -> int:
     paths = ensure_managed_layout(_repo_root())
+    status = managed_surface_status(paths)
     print(f"managed overlay ready at {paths.managed_root}")
     print(f"  config:    {paths.config_file}")
     print(f"  quarantine:{paths.quarantine_requests_dir}")
     print(f"  approved:  {paths.approved_recipes_dir}")
     print(f"  include:   {paths.approved_include_file}")
     print(f"  history:   {paths.decisions_log}")
+    print("  posture:   quarantine-first; bootstrap only creates the governed overlay")
+    print(f"  history-status: {status.status} ({status.summary})")
     return 0
 
 
@@ -148,7 +152,12 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 def cmd_render_include(_args: argparse.Namespace) -> int:
     paths = ensure_managed_layout(_repo_root())
-    target = write_include(paths)
+    try:
+        ensure_clean_managed_surface(paths)
+        target = write_include(paths)
+    except ManagedDriftError as exc:
+        print(f"render failed: {exc}", file=sys.stderr)
+        return 1
     print(f"rendered {target}")
     return 0
 

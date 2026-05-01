@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
+from just_for_agents.drift import managed_surface_status
 from just_for_agents.history import (
     ApprovalError,
     append_decision,
@@ -69,6 +70,15 @@ class EnsureManagedRepoTests(unittest.TestCase):
             ensure_managed_repo(paths)
             head_after = _git(paths.managed_root, "rev-parse", "HEAD").strip()
             self.assertEqual(head_before, head_after)
+
+
+class ManagedSurfaceStatusTests(unittest.TestCase):
+    def test_reports_uninitialized_before_first_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, _ = _setup(tmp)
+            status = managed_surface_status(paths)
+            self.assertEqual(status.status, "uninitialized")
+            self.assertIn("quarantine-first", status.summary)
 
 
 class AppendDecisionTests(unittest.TestCase):
@@ -164,6 +174,30 @@ class ApproveRequestTests(unittest.TestCase):
             # No candidate.just written.
             with self.assertRaises(ApprovalError):
                 approve_request(paths, store, request.request_id)
+
+    def test_refuses_approval_when_governed_surface_has_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, store = _setup(tmp)
+            original = _quarantined_request_with_candidate(
+                paths, store, target_recipes=["hello"]
+            )
+            approve_request(paths, store, original.request_id)
+
+            (paths.approved_recipes_dir / "hello.just").write_text(
+                "@hello:\n    echo drift\n", encoding="utf-8"
+            )
+            follow_up = _quarantined_request_with_candidate(
+                paths,
+                store,
+                target_recipes=["hello"],
+                candidate_body="@hello:\n    echo replacement\n",
+            )
+
+            with self.assertRaises(ApprovalError) as ctx:
+                approve_request(paths, store, follow_up.request_id)
+
+            self.assertIn("drift detected", str(ctx.exception))
+            self.assertIn("approved/recipes/hello.just", str(ctx.exception))
 
 
 if __name__ == "__main__":
