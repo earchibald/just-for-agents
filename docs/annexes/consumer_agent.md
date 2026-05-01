@@ -176,7 +176,7 @@ The model should see a tiny toolset:
 | Tool | Purpose |
 | --- | --- |
 | `just_schema` | Return the cached manifest, optionally refreshing it |
-| `just_run` | Execute a validated `just` recipe with mapped arguments |
+| `just_run` | Execute exactly one validated `just` recipe with mapped arguments |
 | `just_escalate` | Invoke `just escalate "<prompt>"`, then auto-refresh the cached schema on success |
 | `just_refresh` | Re-run `bootstrap` and `schema` after direct `Justfile` changes |
 
@@ -185,11 +185,15 @@ The model should see a tiny toolset:
 
 1. Validate that the requested recipe exists in the cached schema
 2. Validate that only known parameters are passed
-3. Build argv in schema parameter order, passing recipe parameters positionally
-4. Execute without shell interpolation
-5. Return structured stdout/stderr/exit information
+3. Resolve the tool call to exactly one recipe invocation
+4. Build argv in schema parameter order, passing recipe parameters positionally
+5. Execute without shell interpolation
+6. Prefer `just --one <recipe> ...` as a guardrail when direct `just` execution remains exposed
+7. Return structured stdout/stderr/exit information
 
-This is important: because the Consumer Agent has no shell tool available, it cannot improvise shell commands even if it wanted to — it must call the documented API surface emitted by `just schema`. The tool call can still use named fields like `{ "file": "/path/to/file" }`, but the extension must translate those into positional `just` argv such as `just md5 /path/to/file`.
+This is important: because the Consumer Agent has no shell tool available, it cannot improvise shell commands even if it wanted to — it must call the documented API surface emitted by `just schema`. The tool call can still use named fields like `{ "file": "/path/to/file" }`, but the extension must translate those into one positional `just` invocation such as `just md5 /path/to/file`, not a multi-recipe argv.
+
+Upstream `just` supports multi-recipe argv like `just a b c`, but that is an unsafe default for agent-generated argv: later tokens can be interpreted as more recipe names or silently swallowed as parameters for the first recipe. Agent-facing integrations should therefore issue one validated recipe per tool call and use `--one` where a raw `just` shell-out path still exists.
 
 For the `research` recipe specifically, `rounds` should be treated as the number of **new** rounds to append in the current invocation. If the user asks for "1 iteration" or "one more round", the Consumer should call `research` with `rounds='1'` and let the recipe continue from the latest completed round automatically.
 

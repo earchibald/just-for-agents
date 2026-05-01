@@ -42,6 +42,7 @@ Instead of parsing the `Justfile` source directly, the agent should prefer the e
 ## 4. Technical Components
 - **API Bridge**: A utility that runs `just --list`, parses the `# @tag` metadata, and emits the JSON returned by `just schema` (and therefore bare `just`) (e.g., OpenAI Tool Specs).
 - **Execution Wrapper**: A thin layer that captures `stdout`, `stderr`, and exit codes, re-formatting them into "Agent-Friendly" responses.
+- **Execution Contract**: Agent-facing executors must issue exactly one validated recipe per tool call. Upstream multi-recipe argv is useful CLI behavior, but unsafe as a default integration contract because later tokens can be reinterpreted or swallowed as earlier recipe parameters; where direct `just` execution remains exposed, prefer `just --one`.
 - **Protocol Recipes**: A set of standardized recipes (e.g., `list`, `schema`, `validate`) that define the agent's interaction with the workspace.
 
 ## 5. Open Questions

@@ -127,8 +127,10 @@ Expected behavior:
 
 1. Pi uses the local Qwen Consumer model
 2. the extension restricts the model to `just_schema`, `just_run`, `just_refresh`, and `just_escalate`
-3. with shell, file-edit, and write tools removed from its toolset, the model maps your request onto `just` recipes — the Justfile is the entire capability surface it sees
+3. with shell, file-edit, and write tools removed from its toolset, the model maps your request onto exactly one validated `just` recipe per `just_run` call — the Justfile is the entire capability surface it sees
 4. if the current API is insufficient, it escalates through `just escalate`
+
+That single-recipe rule matters even though upstream `just` allows multi-recipe argv: agent-generated argv is a poor fit for `just a b c`, because later tokens can be misread as more recipe names or swallowed as parameters for the first one. If your consumer still shells out to `just` directly instead of using a stricter wrapper, prefer `just --one` so the invocation fails closed.
 
 When `just escalate` runs in a shell with `tmux` available, it creates or reuses the fixed tmux session `just-for-agents-escalate`, starts the Senior Agent in a prompt-derived window, and tells you how to attach. In iTerm2, it also attempts to open a tmux control-mode window automatically; later reattach with `tmux attach-session -t just-for-agents-escalate`.
 
