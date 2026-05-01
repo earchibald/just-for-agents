@@ -16,7 +16,7 @@ MANIFEST = {
         "Use '@recipe:' or prefix individual lines with '@' to suppress command echoing, but do not combine both in the same recipe.",
         "Use curly-brace syntax for argument substitution.",
         "Documentation lives in [doc('@desc ...')] attributes.",
-        "Agents can extend the API using the 'add-tool' recipe.",
+        "Agents stage managed recipe changes with 'managed-new', 'managed-edit', and 'managed-delete'; reserve 'add-tool' for protected protocol maintenance.",
         "Linux users: review https://github.com/terror/just-lsp before using install-lsp.",
     ],
 }

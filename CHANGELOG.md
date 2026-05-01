@@ -13,6 +13,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 - Added a design spec for a governed managed-recipe overlay with quarantine, human approval, git-backed audit history, and a hybrid terminal-plus-browser operator surface.
 - Added the managed-overlay foundation: a new `just_for_agents/` Python package (`managed_paths`, `request_store`, and a `python -m just_for_agents` CLI), a `.just-for-agents/managed.just` partition, and root-level `managed-bootstrap`, `managed-queue`, and `managed-inspect` recipes so quarantined requests land in a single auditable layout discoverable via `just schema` (JFA-81).
 - Added the approval core: `just_for_agents/projection.py` rebuilds `approved/includes/managed.just` deterministically, `just_for_agents/history.py` initializes a dedicated managed git repo and records one commit plus one decision-ledger entry per approval, and the new `managed-render-include` and `managed-approve` recipes plus an optional root-Justfile `import?` make approved managed recipes the only live include surface (JFA-82).
+- Added quarantined mutation staging for managed recipes: `managed-new`, `managed-edit`, and `managed-delete` now create request artifacts through `just_for_agents/mutations.py`, `just escalate` stages candidate capability work into the queue instead of publishing directly, and README/testing coverage documents the managed review flow (JFA-83).
 
 ## [0.3.0] - 2026-04-30
 

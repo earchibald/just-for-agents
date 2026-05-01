@@ -6,7 +6,7 @@
 @bootstrap:
     echo "AGENT INSTRUCTIONS:"
     echo "1. This project uses 'just-for-agents'. Run 'just' to discover the API."
-    echo "2. Use 'add-tool' to persist new capabilities."
+    echo "2. Use 'managed-new', 'managed-edit', and 'managed-delete' for governed recipe changes; reserve 'add-tool' for protected protocol maintenance."
     echo "3. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
     echo "4. Agents supporting LSPs should run 'just install-lsp' and use 'just-lsp' for Justfile navigation and refactors."
     echo "5. Update CHANGELOG.md before stopping if you changed the repository."

@@ -58,6 +58,21 @@ just research-reset
 
 If you use local Ollama aliases, keep the **consumer** and **research** roles separate. A chat-oriented Consumer model can power Pi, while `just research` can prefer a dedicated research-tuned model such as `just-research-qwen3.6:latest`.
 
+### **Managed Recipe Queue**
+
+Managed non-core recipe mutations now stage through the quarantined queue instead of publishing directly into the live Just surface.
+
+```bash
+just managed-new recipe_name='hello' command='echo hi' desc='Say hi'
+just managed-edit recipe_name='hello'
+just managed-delete recipe_name='hello'
+just managed-queue
+just managed-inspect req-20260501-001
+just managed-approve req-20260501-001 operator='you' rationale='reviewed'
+```
+
+Until a request is approved, it stays under `.just-for-agents/managed/quarantine/requests/` and does **not** appear in `just schema` or `just --list`. `just escalate` follows the same path, so escalated capability work lands in the review queue first.
+
 ### **Versioning**
 
 The canonical project version lives in the root `VERSION` file and follows semantic versioning.
