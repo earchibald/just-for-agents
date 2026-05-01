@@ -5,6 +5,9 @@ Exposes the minimal surface needed by the root Justfile's `managed-*` recipes:
 * ``bootstrap`` — materialize the managed overlay layout, idempotent.
 * ``queue`` — list quarantined change requests (id, source, target recipes).
 * ``inspect <request_id>`` — print one request's full JSON.
+* ``new <name>`` — stage a manual-add request with a candidate recipe body.
+* ``edit <name>`` — clone one approved managed recipe into quarantine.
+* ``delete <name>`` — stage a tombstone request for one approved recipe.
 * ``render-include`` — rebuild ``approved/includes/managed.just`` from approved/recipes/.
 * ``approve <request_id>`` — approve a quarantined request, project, commit, ledger.
 """
@@ -18,6 +21,12 @@ from pathlib import Path
 
 from .history import ApprovalError, approve_request
 from .managed_paths import ensure_managed_layout
+from .mutations import (
+    MutationError,
+    create_delete_request,
+    create_edit_request,
+    create_new_request,
+)
 from .projection import write_include
 from .request_store import RequestStore
 
@@ -65,6 +74,73 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _request_payload(store: RequestStore, request_id: str, artifact_path: Path, key: str) -> dict:
+    request = store.get(request_id)
+    if request is None:
+        raise RuntimeError(f"newly created request vanished: {request_id}")
+    payload = request.to_dict()
+    payload["request_path"] = str(store.request_dir(request_id))
+    payload[key] = str(artifact_path)
+    return payload
+
+
+def cmd_new(args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    store = RequestStore(paths)
+    try:
+        request, candidate = create_new_request(
+            paths,
+            store,
+            recipe_name=args.recipe_name,
+            command=args.command,
+            desc=args.desc,
+            params=args.params,
+            author_label=args.author,
+            review_notes=args.review_notes,
+        )
+    except MutationError as exc:
+        print(f"mutation failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(_request_payload(store, request.request_id, candidate, "candidate_path"), indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_edit(args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    store = RequestStore(paths)
+    try:
+        request, candidate = create_edit_request(
+            paths,
+            store,
+            recipe_name=args.recipe_name,
+            author_label=args.author,
+            review_notes=args.review_notes,
+        )
+    except MutationError as exc:
+        print(f"mutation failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(_request_payload(store, request.request_id, candidate, "candidate_path"), indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_delete(args: argparse.Namespace) -> int:
+    paths = ensure_managed_layout(_repo_root())
+    store = RequestStore(paths)
+    try:
+        request, tombstone = create_delete_request(
+            paths,
+            store,
+            recipe_name=args.recipe_name,
+            author_label=args.author,
+            review_notes=args.review_notes,
+        )
+    except MutationError as exc:
+        print(f"mutation failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(_request_payload(store, request.request_id, tombstone, "tombstone_path"), indent=2, sort_keys=True))
+    return 0
+
+
 def cmd_render_include(_args: argparse.Namespace) -> int:
     paths = ensure_managed_layout(_repo_root())
     target = write_include(paths)
@@ -101,6 +177,27 @@ def main(argv: list[str] | None = None) -> int:
     inspect = sub.add_parser("inspect", help="print one request as JSON")
     inspect.add_argument("request_id")
     inspect.set_defaults(func=cmd_inspect)
+
+    new = sub.add_parser("new", help="stage a manual-add request")
+    new.add_argument("recipe_name")
+    new.add_argument("--command", required=True, help="recipe command body")
+    new.add_argument("--desc", default="", help="optional @desc doc text")
+    new.add_argument("--params", default="", help="optional recipe parameter list")
+    new.add_argument("--author", default="", help="operator label for the request")
+    new.add_argument("--review-notes", default="", help="freeform review notes")
+    new.set_defaults(func=cmd_new)
+
+    edit = sub.add_parser("edit", help="stage a manual-edit request from approved state")
+    edit.add_argument("recipe_name")
+    edit.add_argument("--author", default="", help="operator label for the request")
+    edit.add_argument("--review-notes", default="", help="freeform review notes")
+    edit.set_defaults(func=cmd_edit)
+
+    delete = sub.add_parser("delete", help="stage a manual-delete tombstone request")
+    delete.add_argument("recipe_name")
+    delete.add_argument("--author", default="", help="operator label for the request")
+    delete.add_argument("--review-notes", default="", help="freeform review notes")
+    delete.set_defaults(func=cmd_delete)
 
     sub.add_parser(
         "render-include",
