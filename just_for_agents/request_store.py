@@ -1,0 +1,136 @@
+"""Persistence for quarantined managed-recipe change requests.
+
+A request is a single proposed mutation to the approved recipe footprint. It
+lives under ``quarantine/requests/<request_id>/`` until an operator approves,
+rejects, or supersedes it. This module owns request creation, listing, and
+retrieval; it does not implement approval or projection — those land in
+follow-up issues (JFA-82+).
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Iterable
+
+from .managed_paths import ManagedPaths
+
+VALID_SOURCES = frozenset(
+    {"escalation", "manual-add", "manual-edit", "manual-delete", "drift-import"}
+)
+VALID_STATUSES = frozenset({"quarantined", "approved", "rejected", "superseded"})
+
+
+@dataclass
+class Request:
+    """A single change request."""
+
+    request_id: str
+    source: str
+    status: str
+    created_at: str
+    updated_at: str
+    target_recipes: list[str]
+    author_label: str = ""
+    review_notes: str = ""
+    risk_flags: list[str] = field(default_factory=list)
+    dry_run_summary: str = ""
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Request":
+        return cls(**data)
+
+
+class RequestStore:
+    """Reads and writes quarantined requests under a :class:`ManagedPaths` root."""
+
+    def __init__(self, paths: ManagedPaths) -> None:
+        self._paths = paths
+
+    @property
+    def paths(self) -> ManagedPaths:
+        return self._paths
+
+    def request_dir(self, request_id: str) -> Path:
+        return self._paths.quarantine_requests_dir / request_id
+
+    def request_file(self, request_id: str) -> Path:
+        return self.request_dir(request_id) / "request.json"
+
+    def create(
+        self,
+        *,
+        source: str,
+        target_recipes: Iterable[str],
+        author_label: str = "",
+        review_notes: str = "",
+        risk_flags: Iterable[str] | None = None,
+        now: datetime | None = None,
+    ) -> Request:
+        if source not in VALID_SOURCES:
+            raise ValueError(
+                f"unknown request source: {source!r} (expected one of {sorted(VALID_SOURCES)})"
+            )
+
+        moment = (now or datetime.now(timezone.utc)).replace(microsecond=0)
+        request_id = self._allocate_request_id(moment)
+        request = Request(
+            request_id=request_id,
+            source=source,
+            status="quarantined",
+            created_at=moment.isoformat(),
+            updated_at=moment.isoformat(),
+            target_recipes=list(target_recipes),
+            author_label=author_label,
+            review_notes=review_notes,
+            risk_flags=list(risk_flags or []),
+            dry_run_summary="",
+        )
+
+        directory = self.request_dir(request_id)
+        directory.mkdir(parents=True, exist_ok=False)
+        self.request_file(request_id).write_text(
+            json.dumps(request.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return request
+
+    def get(self, request_id: str) -> Request | None:
+        path = self.request_file(request_id)
+        if not path.exists():
+            return None
+        return Request.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+    def list_quarantined(self) -> list[Request]:
+        root = self._paths.quarantine_requests_dir
+        if not root.exists():
+            return []
+        out: list[Request] = []
+        for child in sorted(root.iterdir()):
+            request_path = child / "request.json"
+            if not request_path.exists():
+                continue
+            request = Request.from_dict(json.loads(request_path.read_text(encoding="utf-8")))
+            if request.status == "quarantined":
+                out.append(request)
+        return out
+
+    def _allocate_request_id(self, moment: datetime) -> str:
+        date_part = moment.strftime("%Y%m%d")
+        prefix = f"req-{date_part}-"
+        existing = (
+            child.name
+            for child in self._paths.quarantine_requests_dir.glob(f"{prefix}*")
+            if child.is_dir()
+        )
+        used = 0
+        for name in existing:
+            tail = name[len(prefix):]
+            if tail.isdigit():
+                used = max(used, int(tail))
+        return f"{prefix}{used + 1:03d}"

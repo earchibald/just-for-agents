@@ -61,6 +61,24 @@ opencode-add-ollama-model model display_name='':
 opencode-enable-exa-mcp:
     just --justfile ./.just-for-agents/research.just opencode-enable-exa-mcp
 
+[doc('@desc Bootstrap the managed recipe governance overlay
+@usage Run once to materialize .just-for-agents/managed/. Idempotent.')]
+@managed-bootstrap:
+    just --justfile ./.just-for-agents/managed.just bootstrap
+
+[doc('@desc List quarantined managed-recipe change requests
+@usage just managed-queue
+@returns text')]
+@managed-queue:
+    just --justfile ./.just-for-agents/managed.just queue
+
+[doc("@desc Print one quarantined request as JSON
+@param request_id The request id (e.g. req-20260501-001)
+@usage just managed-inspect req-20260501-001
+@returns json")]
+@managed-inspect request_id:
+    just --justfile ./.just-for-agents/managed.just inspect "{{request_id}}"
+
 [doc("@desc Find files >1MB in a directory and create a timestamped zip archive.
 @param dir The directory to search (defaults to '.')
 @usage just archive-large dir='downloads'")]

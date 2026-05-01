@@ -14,5 +14,6 @@ This directory contains the modularized implementation layer for the root `Justf
   - `agent.just`
   - `research.just`
   - `utility.just`
+  - `managed.just` (managed-overlay bootstrap/queue/inspect; backed by the top-level `just_for_agents/` Python package)
 
 The next modularization step can decide whether to keep the root Justfile as a dispatcher or switch to a `mod`-based import structure once compatibility risk is acceptable.

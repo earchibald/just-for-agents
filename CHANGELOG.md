@@ -11,6 +11,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 - Added `docs/annexes/just_manual_audit.md` ledger and recorded section `1.6.3 Invoking Multiple Recipes` as suitable with caveats: multi-recipe argv and `--one` are upstream cautionary context only, while agent-facing integrations should continue to issue one validated recipe per tool call (JFA-6).
 - Added a design spec for a governed managed-recipe overlay with quarantine, human approval, git-backed audit history, and a hybrid terminal-plus-browser operator surface.
+- Added the managed-overlay foundation: a new `just_for_agents/` Python package (`managed_paths`, `request_store`, and a `python -m just_for_agents` CLI), a `.just-for-agents/managed.just` partition, and root-level `managed-bootstrap`, `managed-queue`, and `managed-inspect` recipes so quarantined requests land in a single auditable layout discoverable via `just schema` (JFA-81).
 
 ## [0.3.0] - 2026-04-30
 
