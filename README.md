@@ -68,6 +68,9 @@ just managed-edit recipe_name='hello'
 just managed-delete recipe_name='hello'
 just managed-queue
 just managed-inspect req-20260501-001
+just managed-dry-run req-20260501-001
+just managed-review req-20260501-001
+just managed-dashboard
 just managed-approve req-20260501-001 operator='you' rationale='reviewed'
 ```
 

@@ -84,6 +84,26 @@ opencode-enable-exa-mcp:
 @managed-inspect request_id:
     just --justfile ./.just-for-agents/managed.just inspect "{{request_id}}"
 
+[doc("@desc Capture a quarantined dry-run preview for one request
+@param request_id The request id (e.g. req-20260501-001)
+@usage just managed-dry-run req-20260501-001
+@returns json")]
+@managed-dry-run request_id:
+    just --justfile ./.just-for-agents/managed.just dry-run "{{request_id}}"
+
+[doc("@desc Render an HTML review page for one quarantined request
+@param request_id The request id (e.g. req-20260501-001)
+@usage just managed-review req-20260501-001
+@returns json")]
+@managed-review request_id:
+    just --justfile ./.just-for-agents/managed.just review "{{request_id}}"
+
+[doc('@desc Render the managed operator dashboard and refresh its HTML companion
+@usage just managed-dashboard
+@returns text')]
+@managed-dashboard:
+    just --justfile ./.just-for-agents/managed.just dashboard
+
 [doc("@desc Stage a new managed recipe in the quarantined review queue
 @param recipe_name The managed recipe name to create
 @param command The recipe body command(s)

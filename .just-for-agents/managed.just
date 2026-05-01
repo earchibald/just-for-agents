@@ -11,6 +11,18 @@
     python3 -m just_for_agents inspect "{{request_id}}"
 
 [no-cd]
+@dry-run request_id:
+    python3 -m just_for_agents dry-run "{{request_id}}"
+
+[no-cd]
+@review request_id:
+    python3 -m just_for_agents review "{{request_id}}"
+
+[no-cd]
+@dashboard:
+    python3 -m just_for_agents dashboard
+
+[no-cd]
 @new recipe_name command desc='' params='' author='' review_notes='':
     python3 -m just_for_agents new "{{recipe_name}}" --command "{{command}}" --desc "{{desc}}" --params "{{params}}" --author "{{author}}" --review-notes "{{review_notes}}"
 
