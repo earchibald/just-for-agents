@@ -19,7 +19,7 @@ The documentation and local model support are solid. Next:
 
 ### 1. Reference Consumer (The "Just-Chat" Shell)
 Create a simple script or `just` recipe that demonstrates a Consumer Agent interaction.
-- **Logic**: NLP prompt -> `just schema` -> tool execution.
+- **Logic**: NLP prompt -> `just schema` -> single validated recipe execution.
 
 ### 2. Exporting the Skill
 Develop `just export-skill <format>` to package the `Justfile` for Gemini Skills or MCP.

@@ -25,6 +25,10 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 - Set the agent-facing `schema` recipe as the explicit `[default]` entrypoint so bare `just` deterministically returns the machine-readable discovery manifest without depending on recipe order, and documented `just --list` as the human-readable listing path.
 
+### Changed
+
+- Clarified the README, consumer docs, concept notes, and agent guidance to prefer `just schema` for agent discovery, reserve `just --list` for human-facing inspection, and require exactly one validated recipe per tool call with `just --one` as the guardrail when raw `just` execution remains exposed.
+
 ## [0.3.0] - 2026-04-30
 
 ### Changed

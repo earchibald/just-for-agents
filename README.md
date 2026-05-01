@@ -93,7 +93,9 @@ Release notes live in `CHANGELOG.md`, and git tags use the matching `vX.Y.Z` for
 
 To ensure interoperability, just-for-agents follows these conventions:
 
-* **The Discovery Pattern:** Agents should start with bare `just` (explicitly bound to `just schema`) or run `just schema` directly for machine-readable discovery. Use `just --list` when they need the human-readable recipe catalog instead of parsing the `Justfile` source directly.  
+* **The Discovery Pattern:** Agents should start with bare `just` (explicitly bound to `just schema`) or run `just schema` directly for machine-readable discovery. Use `just --list` when they need the human-readable recipe catalog instead of parsing the `Justfile` source directly.
+* **The Execution Pattern:** Agent-facing integrations must execute exactly one validated recipe per tool call. Do not rely on upstream multi-recipe argv such as `just a b c` as the default agent contract: agent-generated argv can ambiguously reinterpret or swallow later tokens as earlier recipe parameters.
+* **Guardrails Matter:** When direct `just` execution remains exposed, prefer `just --one <recipe> ...` so accidental multi-recipe invocations fail closed.
 * **The Argument Contract:** All variables in recipes should have sensible defaults or clear descriptions in the comments.  
 * **Safety First:** Destructive commands (e.g., rm, drop-db) must be explicitly tagged with @danger in the comments to trigger agent confirmation.
 
