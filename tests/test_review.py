@@ -8,7 +8,12 @@ from just_for_agents.history import append_decision, commit_approval, ensure_man
 from just_for_agents.managed_paths import ensure_managed_layout
 from just_for_agents.projection import write_include
 from just_for_agents.request_store import RequestStore
-from just_for_agents.review import render_dashboard_text, write_dashboard, write_request_review
+from just_for_agents.review import (
+    ReviewError,
+    render_dashboard_text,
+    write_dashboard,
+    write_request_review,
+)
 
 
 def _setup_repo(tmp: str):
@@ -42,6 +47,30 @@ def _seed_approved_recipe(
         },
     )
     commit_approval(paths, request_id=request_id, action="recipe")
+
+
+def _write_invalid_multi_target_request(paths, request_id: str) -> Path:
+    request_dir = paths.quarantine_requests_dir / request_id
+    request_dir.mkdir(parents=True, exist_ok=True)
+    (request_dir / "request.json").write_text(
+        json.dumps(
+            {
+                "request_id": request_id,
+                "source": "manual-add",
+                "status": "quarantined",
+                "created_at": "2026-05-01T12:00:00+00:00",
+                "updated_at": "2026-05-01T12:00:00+00:00",
+                "target_recipes": ["hello", "world"],
+                "author_label": "",
+                "review_notes": "",
+                "risk_flags": [],
+                "dry_run_summary": "",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return request_dir
 
 
 class RequestReviewTests(unittest.TestCase):
@@ -96,6 +125,20 @@ class RequestReviewTests(unittest.TestCase):
             self.assertIn("drifted", html)
             self.assertIn("approved/recipes/hello.just", html)
 
+    def test_write_request_review_rejects_multi_target_request_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, store = _setup_repo(tmp)
+            request_id = "req-20260501-001"
+            request_dir = _write_invalid_multi_target_request(paths, request_id)
+            (request_dir / "candidate.just").write_text(
+                "hello:\n    echo candidate\n", encoding="utf-8"
+            )
+
+            with self.assertRaises(ReviewError) as ctx:
+                write_request_review(paths, store, request_id)
+
+            self.assertIn("exactly one recipe", str(ctx.exception))
+
 
 class DashboardTests(unittest.TestCase):
     def test_dashboard_lists_queue_library_and_settings(self) -> None:
@@ -143,6 +186,16 @@ class DashboardTests(unittest.TestCase):
             self.assertIn("approved/includes/managed.just", text)
             self.assertIn("drifted", html)
             self.assertIn("approved/includes/managed.just", html)
+
+    def test_dashboard_rejects_multi_target_request_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, store = _setup_repo(tmp)
+            _write_invalid_multi_target_request(paths, "req-20260501-001")
+
+            with self.assertRaises(ReviewError) as ctx:
+                render_dashboard_text(paths, store)
+
+            self.assertIn("exactly one recipe", str(ctx.exception))
 
 
 if __name__ == "__main__":

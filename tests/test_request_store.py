@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from just_for_agents.managed_paths import ensure_managed_layout
-from just_for_agents.request_store import RequestStore
+from just_for_agents.request_store import RequestStore, RequestValidationError
 
 
 def _store(tmp: str) -> RequestStore:
@@ -78,6 +78,38 @@ class RequestStoreTests(unittest.TestCase):
             store = _store(tmp)
             with self.assertRaises(ValueError):
                 store.create(source="bogus", target_recipes=["x"])
+
+    def test_multi_target_requests_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            with self.assertRaises(RequestValidationError):
+                store.create(source="manual-add", target_recipes=["alpha", "beta"])
+
+    def test_get_rejects_invalid_multi_target_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            request_dir = store.request_dir("req-20260501-001")
+            request_dir.mkdir(parents=True, exist_ok=True)
+            store.request_file("req-20260501-001").write_text(
+                json.dumps(
+                    {
+                        "request_id": "req-20260501-001",
+                        "source": "manual-add",
+                        "status": "quarantined",
+                        "created_at": "2026-05-01T12:00:00+00:00",
+                        "updated_at": "2026-05-01T12:00:00+00:00",
+                        "target_recipes": ["alpha", "beta"],
+                        "author_label": "",
+                        "review_notes": "",
+                        "risk_flags": [],
+                        "dry_run_summary": "",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(RequestValidationError):
+                store.get("req-20260501-001")
 
 
 if __name__ == "__main__":

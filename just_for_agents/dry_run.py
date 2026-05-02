@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .managed_paths import ManagedPaths
-from .request_store import Request, RequestStore
+from .request_store import Request, RequestStore, RequestValidationError
 
 
 class DryRunError(RuntimeError):
@@ -89,6 +89,7 @@ def _write_session_justfile(paths: ManagedPaths, request: Request, target_dir: P
 def _run_just_dry_run(paths: ManagedPaths, session_justfile: Path, recipe_name: str) -> dict[str, Any]:
     command = [
         "just",
+        "--one",
         "--working-directory",
         str(paths.repo_root),
         "--justfile",
@@ -174,7 +175,10 @@ def run_request_dry_run(
 ) -> dict[str, Any]:
     """Run and persist a dry-run preview for one quarantined request."""
 
-    request = store.get(request_id)
+    try:
+        request = store.get(request_id)
+    except RequestValidationError as exc:
+        raise DryRunError(str(exc)) from exc
     if request is None:
         raise DryRunError(f"unknown request: {request_id}")
     if request.status != "quarantined":
@@ -194,17 +198,15 @@ def run_request_dry_run(
 
     if candidate.is_file():
         root_copy, session_justfile = _write_session_justfile(paths, request, dry_run_root)
-        recipe_results = [
-            _run_just_dry_run(paths, session_justfile, recipe_name)
-            for recipe_name in request.target_recipes
-        ]
+        recipe_name = request.target_recipes[0]
+        recipe_results = [_run_just_dry_run(paths, session_justfile, recipe_name)]
     elif tombstone.is_file():
+        recipe_name = request.target_recipes[0]
         recipe_results = [
             _skipped_recipe_result(
                 recipe_name,
                 "delete request has no candidate recipe body",
             )
-            for recipe_name in request.target_recipes
         ]
     else:
         raise DryRunError(

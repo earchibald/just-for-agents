@@ -28,6 +28,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 - Set the agent-facing `schema` recipe as the explicit `[default]` entrypoint so bare `just` deterministically returns the machine-readable discovery manifest without depending on recipe order, and documented `just --list` as the human-readable listing path.
 - Fixed the Pi consumer installer and startup flow so `examples/pi-consumer/install.sh <target>` fully resets the target workspace's just-for-agents state, re-seeds the runtime bundle plus `.pi/` and `just_for_agents/`, and the consumer extension still enters just-only mode with an empty `just_schema` result if the target later loses its `Justfile`.
 - Fixed `.just-for-agents/bridge.py` to parse `just --list` recipe signatures with quoted defaults correctly, so schema entries like `content='hello world'` no longer turn into bogus required parameters during live Consumer runs.
+- Fixed agent-facing direct `just` integrations to fail closed on multi-recipe execution: managed request payloads now require exactly one target recipe, managed dry-runs shell out with `just --one`, and the Pi consumer example now wraps bootstrap/schema/run/escalate calls with the same single-recipe guardrail.
 
 ### Changed
 

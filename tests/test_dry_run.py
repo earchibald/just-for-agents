@@ -1,9 +1,16 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from just_for_agents.dry_run import load_dry_run_result, run_request_dry_run
+from just_for_agents.dry_run import (
+    _run_just_dry_run,
+    DryRunError,
+    load_dry_run_result,
+    run_request_dry_run,
+)
 from just_for_agents.managed_paths import ensure_managed_layout
 from just_for_agents.request_store import RequestStore
 
@@ -73,6 +80,59 @@ class RunRequestDryRunTests(unittest.TestCase):
             self.assertEqual(payload["status"], "skipped")
             self.assertIn("delete request has no candidate recipe body", payload["summary"])
             self.assertEqual(payload["recipe_results"][0]["status"], "skipped")
+
+    def test_rejects_multi_target_request_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, store = _setup_repo(tmp)
+            request_id = "req-20260501-001"
+            request_dir = paths.quarantine_requests_dir / request_id
+            request_dir.mkdir(parents=True, exist_ok=True)
+            (request_dir / "request.json").write_text(
+                json.dumps(
+                    {
+                        "request_id": request_id,
+                        "source": "manual-add",
+                        "status": "quarantined",
+                        "created_at": "2026-05-01T12:00:00+00:00",
+                        "updated_at": "2026-05-01T12:00:00+00:00",
+                        "target_recipes": ["hello", "world"],
+                        "author_label": "",
+                        "review_notes": "",
+                        "risk_flags": [],
+                        "dry_run_summary": "",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (request_dir / "candidate.just").write_text("hello:\n    echo hi\n", encoding="utf-8")
+
+            with self.assertRaises(DryRunError) as ctx:
+                run_request_dry_run(paths, store, request_id)
+
+            self.assertIn("exactly one recipe", str(ctx.exception))
+
+    def test_uses_just_one_for_direct_dry_run_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, _ = _setup_repo(tmp)
+            session_justfile = Path(tmp) / "session.just"
+            session_justfile.write_text('import "root.just"\n', encoding="utf-8")
+            with patch(
+                "just_for_agents.dry_run.subprocess.run",
+                return_value=subprocess.CompletedProcess(
+                    args=["just"],
+                    returncode=0,
+                    stdout="preview\n",
+                    stderr="",
+                ),
+            ) as mock_run:
+                payload = _run_just_dry_run(paths, session_justfile, "hello")
+
+            command = mock_run.call_args.args[0]
+            self.assertEqual(command[:2], ["just", "--one"])
+            self.assertIn("--dry-run", command)
+            self.assertEqual(command[-1], "hello")
+            self.assertIn("just --one", payload["command"])
 
 
 if __name__ == "__main__":

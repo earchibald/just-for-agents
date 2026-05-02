@@ -19,7 +19,7 @@ from typing import Any
 from .drift import ManagedDriftError, ensure_clean_managed_surface
 from . import projection
 from .managed_paths import ManagedPaths
-from .request_store import Request, RequestStore
+from .request_store import Request, RequestStore, RequestValidationError
 
 
 class ApprovalError(RuntimeError):
@@ -125,7 +125,10 @@ def approve_request(
     Returns the decision-ledger entry that was written.
     """
 
-    request = store.get(request_id)
+    try:
+        request = store.get(request_id)
+    except RequestValidationError as exc:
+        raise ApprovalError(str(exc)) from exc
     if request is None:
         raise ApprovalError(f"unknown request: {request_id}")
     if request.status != "quarantined":
