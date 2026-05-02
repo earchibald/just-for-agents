@@ -23,6 +23,30 @@ VALID_SOURCES = frozenset(
 VALID_STATUSES = frozenset({"quarantined", "approved", "rejected", "superseded"})
 
 
+class RequestValidationError(ValueError):
+    """Raised when a request payload violates the managed single-recipe contract."""
+
+
+def _normalize_target_recipes(target_recipes: Iterable[str]) -> list[str]:
+    if isinstance(target_recipes, str):
+        raise RequestValidationError("target_recipes must be a list of recipe names")
+
+    recipes = [recipe.strip() for recipe in target_recipes]
+    if len(recipes) != 1:
+        raise RequestValidationError(
+            "managed requests must target exactly one recipe"
+        )
+
+    recipe_name = recipes[0]
+    if not recipe_name:
+        raise RequestValidationError("recipe name cannot be empty")
+    if any(char.isspace() for char in recipe_name):
+        raise RequestValidationError(
+            f"recipe name must be one token, got {recipe_name!r}"
+        )
+    return [recipe_name]
+
+
 @dataclass
 class Request:
     """A single change request."""
@@ -43,7 +67,38 @@ class Request:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Request":
-        return cls(**data)
+        try:
+            request_id = data["request_id"]
+            source = data["source"]
+            status = data["status"]
+            created_at = data["created_at"]
+            updated_at = data["updated_at"]
+        except KeyError as exc:
+            raise RequestValidationError(
+                f"request payload is missing required field {exc.args[0]!r}"
+            ) from exc
+
+        if source not in VALID_SOURCES:
+            raise RequestValidationError(
+                f"unknown request source: {source!r} (expected one of {sorted(VALID_SOURCES)})"
+            )
+        if status not in VALID_STATUSES:
+            raise RequestValidationError(
+                f"unknown request status: {status!r} (expected one of {sorted(VALID_STATUSES)})"
+            )
+
+        return cls(
+            request_id=request_id,
+            source=source,
+            status=status,
+            created_at=created_at,
+            updated_at=updated_at,
+            target_recipes=_normalize_target_recipes(data.get("target_recipes", [])),
+            author_label=data.get("author_label", ""),
+            review_notes=data.get("review_notes", ""),
+            risk_flags=list(data.get("risk_flags", [])),
+            dry_run_summary=data.get("dry_run_summary", ""),
+        )
 
 
 class RequestStore:
@@ -65,13 +120,14 @@ class RequestStore:
     def save(self, request: Request) -> Request:
         """Persist a request object back to disk."""
 
+        validated = Request.from_dict(request.to_dict())
         directory = self.request_dir(request.request_id)
         directory.mkdir(parents=True, exist_ok=True)
         self.request_file(request.request_id).write_text(
-            json.dumps(request.to_dict(), indent=2, sort_keys=True) + "\n",
+            json.dumps(validated.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-        return request
+        return validated
 
     def create(
         self,
@@ -96,7 +152,7 @@ class RequestStore:
             status="quarantined",
             created_at=moment.isoformat(),
             updated_at=moment.isoformat(),
-            target_recipes=list(target_recipes),
+            target_recipes=_normalize_target_recipes(target_recipes),
             author_label=author_label,
             review_notes=review_notes,
             risk_flags=list(risk_flags or []),

@@ -33,7 +33,7 @@ from .mutations import (
     create_new_request,
 )
 from .projection import write_include
-from .request_store import RequestStore
+from .request_store import RequestStore, RequestValidationError
 from .review import ReviewError, render_dashboard_text, write_dashboard, write_request_review
 
 
@@ -60,7 +60,11 @@ def cmd_bootstrap(_args: argparse.Namespace) -> int:
 def cmd_queue(_args: argparse.Namespace) -> int:
     paths = ensure_managed_layout(_repo_root())
     store = RequestStore(paths)
-    requests = store.list_quarantined()
+    try:
+        requests = store.list_quarantined()
+    except RequestValidationError as exc:
+        print(f"queue failed: {exc}", file=sys.stderr)
+        return 1
     if not requests:
         print("(no quarantined requests)")
         return 0
@@ -75,7 +79,11 @@ def cmd_queue(_args: argparse.Namespace) -> int:
 def cmd_inspect(args: argparse.Namespace) -> int:
     paths = ensure_managed_layout(_repo_root())
     store = RequestStore(paths)
-    request = store.get(args.request_id)
+    try:
+        request = store.get(args.request_id)
+    except RequestValidationError as exc:
+        print(f"inspect failed: {exc}", file=sys.stderr)
+        return 1
     if request is None:
         print(f"unknown request: {args.request_id}", file=sys.stderr)
         return 1
@@ -107,7 +115,7 @@ def cmd_new(args: argparse.Namespace) -> int:
             author_label=args.author,
             review_notes=args.review_notes,
         )
-    except MutationError as exc:
+    except (MutationError, RequestValidationError) as exc:
         print(f"mutation failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(_request_payload(store, request.request_id, candidate, "candidate_path"), indent=2, sort_keys=True))
@@ -125,7 +133,7 @@ def cmd_edit(args: argparse.Namespace) -> int:
             author_label=args.author,
             review_notes=args.review_notes,
         )
-    except MutationError as exc:
+    except (MutationError, RequestValidationError) as exc:
         print(f"mutation failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(_request_payload(store, request.request_id, candidate, "candidate_path"), indent=2, sort_keys=True))
@@ -143,7 +151,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
             author_label=args.author,
             review_notes=args.review_notes,
         )
-    except MutationError as exc:
+    except (MutationError, RequestValidationError) as exc:
         print(f"mutation failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(_request_payload(store, request.request_id, tombstone, "tombstone_path"), indent=2, sort_keys=True))

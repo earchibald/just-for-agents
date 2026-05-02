@@ -33,7 +33,7 @@ _research-schema-summary:
 
     schema = json.loads(
         subprocess.run(
-            ["just", "schema"],
+            ["just", "--one", "schema"],
             check=True,
             capture_output=True,
             text=True,
