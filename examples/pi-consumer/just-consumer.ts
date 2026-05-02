@@ -49,12 +49,29 @@ type ConsumerProfile = {
 
 const CONSUMER_TOOLS = ["just_schema", "just_run", "just_escalate", "just_refresh"];
 const BLOCKED_TOOLS = new Set(["bash", "edit", "write"]);
+const JUSTFILE_CANDIDATES = ["Justfile", "justfile"];
 
 function runJust(cwd: string, args: string[]) {
 	return spawnSync("just", args, {
 		cwd,
 		encoding: "utf8",
 	});
+}
+
+function workspaceHasJustfile(cwd: string) {
+	return JUSTFILE_CANDIDATES.some((name) => existsSync(join(cwd, name)));
+}
+
+function emptyManifest(): Manifest {
+	return {
+		manifest: {
+			principle: "RADICALLY SIMPLE",
+			rules_of_engagement: [
+				"No Justfile was found in this workspace yet. Consumer mode stays active, but just_schema is empty until a Justfile is added.",
+			],
+		},
+		tools: [],
+	};
 }
 
 function hasOwn(object: Record<string, string>, key: string) {
@@ -171,6 +188,10 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 	}
 
 	function refreshManifest(cwd: string): Manifest {
+		if (!workspaceHasJustfile(cwd)) {
+			manifest = emptyManifest();
+			return manifest;
+		}
 		requireSuccess(runJust(cwd, ["bootstrap"]), "just bootstrap");
 		const schemaOutput = requireSuccess(runJust(cwd, ["schema"]), "just schema");
 		const parsed = JSON.parse(schemaOutput) as Manifest;
@@ -255,6 +276,7 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 			return {
 				content: [{ type: "text", text: JSON.stringify(currentManifest, null, 2) }],
 				details: {
+					hasJustfile: workspaceHasJustfile(ctx.cwd),
 					toolCount: (currentManifest.tools ?? []).length,
 				},
 			};
@@ -268,10 +290,15 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 		parameters: Type.Object({}),
 		async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
 			const currentManifest = refreshManifest(ctx.cwd);
+			const hasJustfile = workspaceHasJustfile(ctx.cwd);
+			const message = hasJustfile
+				? "Refreshed bootstrap instructions and schema."
+				: "No Justfile found. Consumer mode is active, and the cached schema remains empty until this workspace gets a Justfile.";
 			persistState();
 			return {
-				content: [{ type: "text", text: `Refreshed bootstrap instructions and schema.` }],
+				content: [{ type: "text", text: message }],
 				details: {
+					hasJustfile,
 					toolCount: (currentManifest.tools ?? []).length,
 				},
 			};
@@ -292,6 +319,11 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			const currentManifest = ensureManifest(ctx);
+			if (!workspaceHasJustfile(ctx.cwd)) {
+				throw new Error(
+					"No Justfile found in this workspace, so there are no recipes to run yet.",
+				);
+			}
 			const tool = findTool(params.recipe, currentManifest);
 			const args = params.args ?? {};
 			if (!tool) {
@@ -322,6 +354,11 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 			prompt: Type.String({ description: "Describe the missing capability" }),
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+			if (!workspaceHasJustfile(ctx.cwd)) {
+				throw new Error(
+					"No Justfile found in this workspace, so just_escalate cannot add or refresh recipes yet.",
+				);
+			}
 			const result = runJust(ctx.cwd, ["escalate", params.prompt]);
 			requireSuccess(result, "just escalate");
 			const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
@@ -339,7 +376,6 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 	});
 
 	pi.on("session_start", async (_event, ctx) => {
-		if (!existsSync(join(ctx.cwd, "Justfile"))) return;
 		try {
 			profile = loadProfile(ctx.cwd);
 		} catch (error) {
@@ -364,6 +400,12 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 
 		setConsumerMode(ctx, true);
 		showStartupBranding(ctx);
+		if (!workspaceHasJustfile(ctx.cwd)) {
+			ctx.ui.notify(
+				"No Justfile found in this workspace yet. Consumer mode is active with only just_* tools, and just_schema will stay empty until a Justfile is added.",
+				"info",
+			);
+		}
 		persistState();
 	});
 
@@ -396,6 +438,7 @@ Consumer mode rules:
 - Your only tools are just_schema, just_run, just_refresh, and just_escalate. No shell, file-edit, or write tools are available; the Justfile is the entire capability surface.
 - Never parse the Justfile source directly — call just_schema instead.
 - Treat just schema as the authoritative API surface.
+- If just_schema returns no recipes, explain that the workspace has no Justfile yet and do not invent tools.
 - Pass just_run arguments by schema parameter name, but remember the extension executes just recipe parameters positionally.
 - For example, for md5(file), call just_run with args like {"file": "/path/to/file"} and let the extension run \`just md5 /path/to/file\`.
 - When keyed args skip an optional parameter that has a schema default, the extension fills that default automatically before executing the positional just recipe.

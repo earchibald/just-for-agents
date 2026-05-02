@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -20,6 +21,10 @@ MANIFEST = {
         "Linux users: review https://github.com/terror/just-lsp before using install-lsp.",
     ],
 }
+
+
+def _split_tokens(text: str) -> list[str]:
+    return shlex.split(text, posix=True)
 
 
 def parse():
@@ -50,7 +55,7 @@ def parse():
             continue
         if not line or line.startswith("Available recipes"):
             continue
-        parts = line.split()
+        parts = _split_tokens(line)
         if not parts:
             continue
         recipe_name = parts[0]
@@ -70,7 +75,7 @@ def parse():
             recipe_part = line.strip()
         if not recipe_part:
             continue
-        parts = recipe_part.split()
+        parts = _split_tokens(recipe_part)
         name = parts[0]
         params = []
         for parameter in parts[1:]:
@@ -96,4 +101,5 @@ def parse():
     return {"manifest": MANIFEST, "tools": recipes}
 
 
-print(json.dumps(parse(), indent=2))
+if __name__ == "__main__":
+    print(json.dumps(parse(), indent=2))

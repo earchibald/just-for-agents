@@ -80,39 +80,43 @@ If you already use Pi and already have `~/.pi/agent/models.json`, merge the Olla
 
 ### 4. Install the project-local Consumer extension
 
-From the root of this repo:
+From the `just-for-agents` development checkout, install into the target workspace:
 
 ```bash
-mkdir -p .pi/extensions
-cp examples/pi-consumer/settings.json .pi/settings.json
-cp examples/pi-consumer/just-consumer.ts .pi/extensions/just-consumer.ts
-cp examples/pi-consumer/package.json .pi/extensions/package.json
-cp examples/pi-consumer/profile.json .pi/consumer-profile.json
-npm install --prefix .pi/extensions
+bash examples/pi-consumer/install.sh /path/to/target-workspace
 ```
 
-This gives the project the exact Pi setup described in Annex A:
+The installer still merges the Ollama provider into `~/.pi/agent/models.json`, but it now treats the selected target root as a **fresh just-for-agents install**: it resets the target's JFA-managed paths (`.pi/`, `.just-for-agents/`, `just_for_agents/`, `Justfile`, `VERSION`, `README.md`, and `CHANGELOG.md`) and then re-seeds them from the development checkout. If you omit the target, it falls back to the current repo root for backward compatibility.
 
+This gives the target workspace the exact just-for-agents runtime plus the Pi setup described in Annex A:
+
+- root `Justfile`
+- `.just-for-agents/` runtime helpers
+- `just_for_agents/` Python package for the managed governance commands
+- `VERSION`, `README.md`, and `CHANGELOG.md`
 - default provider: `ollama`
 - default model: `just-consumer-qwen3.6:latest`
 - default thinking: `off`
 - project-local Pi extension: `just-consumer.ts`
 - optional personalization hook: `.pi/consumer-profile.json`
 
-### 5. Start Pi in this repo
+### 5. Start Pi in the target workspace
 
 ```bash
+cd /path/to/target-workspace
 pi
 ```
 
 On startup, the Consumer extension will:
 
-1. detect the local `Justfile`
+1. detect the freshly installed local `Justfile`
 2. run `just bootstrap`
 3. run `just schema`
 4. load `.pi/consumer-profile.json` if present
 5. cache the manifest
 6. switch Pi into Consumer mode
+
+If you deliberately remove the target `Justfile` later, Consumer mode still activates and only the `just_*` tools are exposed. In that case `just_schema` returns an empty manifest until the workspace is repopulated with a Justfile-based tool surface.
 7. show branded startup guidance in the Pi UI without sending it into model context when possible
 
 ### 6. Use the Consumer Agent the intended way
