@@ -28,15 +28,16 @@ If any are missing, stop and report — do not attempt to install host-level dep
 ## 2. Run the installer
 
 ```bash
-bash examples/pi-consumer/install.sh
+bash examples/pi-consumer/install.sh "$PWD"
 ```
 
 Expected outcomes:
 
 - `~/.pi/agent/models.json` is updated (a `.bak` is written if it already existed); the Ollama provider entry is merged, not overwritten.
 - `just-consumer-qwen3.6:latest` is rebuilt from the worktree's `examples/pi-consumer/Modelfile`.
-- `.pi/settings.json`, `.pi/extensions/just-consumer.ts`, `.pi/extensions/package.json`, and `.pi/consumer-profile.json` are written into the worktree root.
-- `npm install --prefix .pi/extensions` resolves `typebox`.
+- `Justfile`, `.just-for-agents/`, `just_for_agents/`, `VERSION`, `README.md`, and `CHANGELOG.md` in the selected target are reset from the worktree checkout.
+- `.pi/settings.json`, `.pi/extensions/just-consumer.ts`, `.pi/extensions/package.json`, and `.pi/consumer-profile.json` are written into the selected target directory (`"$PWD"` in this procedure, i.e. the worktree root).
+- `npm install --prefix "$PWD/.pi/extensions"` resolves `typebox`.
 
 ## 3. Smoke tests
 
@@ -88,7 +89,7 @@ grep -n "Your only tools are\|toolset\|capability surface" examples/pi-consumer/
 
 ## 4. Cleanup before commit / PR
 
-The smoke tests intentionally mutate the worktree (escalation rewrites `Justfile` and `CHANGELOG.md`, and writes `test.txt` plus a `.pi/` directory). None of that should land in the PR.
+The smoke tests intentionally mutate the worktree (escalation rewrites `Justfile` and `CHANGELOG.md` and writes `test.txt`, while the installer writes a `.pi/` directory into the chosen target). None of that should land in the PR.
 
 ```bash
 # Drop test artifacts that the Senior Agent or test commands created.

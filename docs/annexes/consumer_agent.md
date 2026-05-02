@@ -34,11 +34,11 @@ This repo now includes a concrete reference bundle under `examples/pi-consumer/`
 
 To use the bundle as-is:
 
-1. copy `models.json` into `~/.pi/agent/models.json` (or merge it)
-2. copy `settings.json` into your project's `.pi/settings.json`
-3. copy `just-consumer.ts` into `.pi/extensions/just-consumer.ts`
-4. copy `package.json` into `.pi/extensions/package.json` and run `npm install` there so Pi can resolve `typebox`
-5. optionally copy `profile.json` into `.pi/consumer-profile.json` for branding and personalization
+```bash
+bash examples/pi-consumer/install.sh /path/to/target-project
+```
+
+That merges `models.json` into `~/.pi/agent/models.json`, resets the target's JFA-managed paths, installs the runtime bundle (`Justfile`, `.just-for-agents/`, `just_for_agents/`, `VERSION`, `README.md`, `CHANGELOG.md`), installs the project-local Pi bundle into `/path/to/target-project/.pi/`, and runs `npm install` inside the target's `.pi/extensions/` directory. If you prefer to do it manually, copy both the runtime files and the Pi-local files into the matching target paths yourself.
 
 ## 🧱 Reference Implementation
 
@@ -164,6 +164,8 @@ On `before_agent_start`, the extension should inject:
 - optional personality-affinity instructions derived from the profile
 
 The primary mechanism for the toolset restriction is `pi.setActiveTools(CONSUMER_TOOLS)` on `session_start`, which removes `bash`, `edit`, `write`, and any other non-Consumer tools from the model's available tool list. As defense-in-depth, the extension also installs a `tool_call` hook that blocks `bash`, `edit`, and `write` if Consumer mode is active — but the model should never see those tool names in the first place.
+
+Consumer mode should still activate even when the target workspace does not contain a `Justfile` yet. In that case, startup branding still appears, only the `just_*` tools are exposed, and `just_schema` returns an empty manifest instead of throwing a hard error. The target installer normally seeds a `Justfile`, so this fallback mainly covers manual damage or partially reset targets.
 
 On `turn_start` or `session_start`, the extension should persist its cached state with `pi.appendEntry()` so resumed sessions restore the manifest and mode cleanly.
 
