@@ -74,6 +74,21 @@ function emptyManifest(): Manifest {
 	};
 }
 
+function validateRecipeName(recipe: string) {
+	const normalized = recipe.trim();
+	if (!normalized) {
+		throw new Error("Recipe name cannot be empty.");
+	}
+	if (/\s/.test(normalized)) {
+		throw new Error(`Recipe name must be exactly one token, got ${JSON.stringify(recipe)}`);
+	}
+	return normalized;
+}
+
+function runJustRecipe(cwd: string, recipe: string, args: string[] = []) {
+	return runJust(cwd, ["--one", validateRecipeName(recipe), ...args]);
+}
+
 function hasOwn(object: Record<string, string>, key: string) {
 	return Object.prototype.hasOwnProperty.call(object, key);
 }
@@ -345,8 +360,8 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 			manifest = emptyManifest();
 			return manifest;
 		}
-		requireSuccess(runJust(cwd, ["bootstrap"]), "just bootstrap");
-		const schemaOutput = requireSuccess(runJust(cwd, ["schema"]), "just schema");
+		requireSuccess(runJustRecipe(cwd, "bootstrap"), "just bootstrap");
+		const schemaOutput = requireSuccess(runJustRecipe(cwd, "schema"), "just schema");
 		const parsed = JSON.parse(schemaOutput) as Manifest;
 		manifest = parsed;
 		return parsed;
@@ -408,7 +423,7 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 
 	function executeRecipe(tool: ManifestTool, args: Record<string, string>, cwd: string) {
 		validateArgs(tool, args);
-		return runJust(cwd, [tool.name, ...buildRecipeArguments(tool, args)]);
+		return runJustRecipe(cwd, tool.name, buildRecipeArguments(tool, args));
 	}
 
 	// Pi commands are additive for the session, so each generated command resolves
@@ -576,7 +591,7 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 					"No Justfile found in this workspace, so just_escalate cannot add or refresh recipes yet.",
 				);
 			}
-			const result = runJust(ctx.cwd, ["escalate", params.prompt]);
+			const result = runJustRecipe(ctx.cwd, "escalate", [params.prompt]);
 			requireSuccess(result, "just escalate");
 			const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
 			const currentManifest = refreshManifest(ctx.cwd);
@@ -664,7 +679,7 @@ Consumer mode rules:
 - Treat just schema as the authoritative API surface.
 - If just_schema returns no recipes, explain that the workspace has no Justfile yet and do not invent tools.
 - Pass just_run arguments by schema parameter name, but remember the extension executes just recipe parameters positionally.
-- For example, for md5(file), call just_run with args like {"file": "/path/to/file"} and let the extension run \`just md5 /path/to/file\`.
+- For example, for md5(file), call just_run with args like {"file": "/path/to/file"} and let the extension run \`just --one md5 /path/to/file\`.
 - When keyed args skip an optional parameter that has a schema default, the extension fills that default automatically before executing the positional just recipe.
 - For the research recipe, \`rounds\` means how many new rounds to run in this invocation, not a retry count for round 1 and not a total-to-date target.
 - If the user asks for one research iteration or one more round, call research with \`{"rounds": "1"}\` and let the recipe append the next round automatically.

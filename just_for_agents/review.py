@@ -13,7 +13,7 @@ from typing import Any
 from .dry_run import load_dry_run_result
 from .drift import ManagedSurfaceStatus, managed_surface_status
 from .managed_paths import ManagedPaths
-from .request_store import RequestStore
+from .request_store import Request, RequestStore, RequestValidationError
 
 
 class ReviewError(RuntimeError):
@@ -60,10 +60,24 @@ def _latest_approval_by_recipe(paths: ManagedPaths) -> dict[str, dict[str, Any]]
 
 def _pending_requests_by_recipe(store: RequestStore) -> dict[str, list[str]]:
     pending: dict[str, list[str]] = {}
-    for request in store.list_quarantined():
+    for request in _list_quarantined(store):
         for recipe_name in request.target_recipes:
             pending.setdefault(recipe_name, []).append(request.request_id)
     return pending
+
+
+def _get_request(store: RequestStore, request_id: str) -> Request | None:
+    try:
+        return store.get(request_id)
+    except RequestValidationError as exc:
+        raise ReviewError(str(exc)) from exc
+
+
+def _list_quarantined(store: RequestStore) -> list[Request]:
+    try:
+        return store.list_quarantined()
+    except RequestValidationError as exc:
+        raise ReviewError(str(exc)) from exc
 
 
 def _dry_run_state(paths: ManagedPaths, request_id: str, summary: str) -> str:
@@ -158,7 +172,7 @@ def write_request_review(
 ) -> dict[str, Any]:
     """Render and persist one request's HTML review page."""
 
-    request = store.get(request_id)
+    request = _get_request(store, request_id)
     if request is None:
         raise ReviewError(f"unknown request: {request_id}")
     surface_status = managed_surface_status(paths)
@@ -287,7 +301,7 @@ def render_dashboard_text(paths: ManagedPaths, store: RequestStore) -> str:
             _dry_run_state(paths, request.request_id, request.dry_run_summary),
             request.dry_run_summary or "-",
         )
-        for request in store.list_quarantined()
+        for request in _list_quarantined(store)
     ]
     approvals = _latest_approval_by_recipe(paths)
     pending_by_recipe = _pending_requests_by_recipe(store)
@@ -352,7 +366,7 @@ def write_dashboard(
             _dry_run_state(paths, request.request_id, request.dry_run_summary),
             request.dry_run_summary or "-",
         )
-        for request in store.list_quarantined()
+        for request in _list_quarantined(store)
     ]
     approvals = _latest_approval_by_recipe(paths)
     pending_by_recipe = _pending_requests_by_recipe(store)

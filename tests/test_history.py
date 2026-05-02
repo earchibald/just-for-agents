@@ -175,6 +175,37 @@ class ApproveRequestTests(unittest.TestCase):
             with self.assertRaises(ApprovalError):
                 approve_request(paths, store, request.request_id)
 
+    def test_rejects_multi_target_request_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, store = _setup(tmp)
+            request_id = "req-20260501-001"
+            request_dir = paths.quarantine_requests_dir / request_id
+            request_dir.mkdir(parents=True, exist_ok=True)
+            (request_dir / "request.json").write_text(
+                json.dumps(
+                    {
+                        "request_id": request_id,
+                        "source": "manual-add",
+                        "status": "quarantined",
+                        "created_at": "2026-05-01T12:00:00+00:00",
+                        "updated_at": "2026-05-01T12:00:00+00:00",
+                        "target_recipes": ["hello", "world"],
+                        "author_label": "",
+                        "review_notes": "",
+                        "risk_flags": [],
+                        "dry_run_summary": "",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (request_dir / "candidate.just").write_text("@hello:\n    echo hi\n", encoding="utf-8")
+
+            with self.assertRaises(ApprovalError) as ctx:
+                approve_request(paths, store, request_id)
+
+            self.assertIn("exactly one recipe", str(ctx.exception))
+
     def test_refuses_approval_when_governed_surface_has_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             paths, store = _setup(tmp)

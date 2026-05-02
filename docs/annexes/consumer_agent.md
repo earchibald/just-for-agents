@@ -194,7 +194,7 @@ The model should see a tiny toolset:
 6. Prefer `just --one <recipe> ...` as a guardrail when direct `just` execution remains exposed
 7. Return structured stdout/stderr/exit information
 
-This is important: because the Consumer Agent has no shell tool available, it cannot improvise shell commands even if it wanted to — it must call the documented API surface emitted by `just schema`. The tool call can still use named fields like `{ "file": "/path/to/file" }`, but the extension must translate those into one positional `just` invocation such as `just md5 /path/to/file`, not a multi-recipe argv.
+This is important: because the Consumer Agent has no shell tool available, it cannot improvise shell commands even if it wanted to — it must call the documented API surface emitted by `just schema`. The tool call can still use named fields like `{ "file": "/path/to/file" }`, but the extension must translate those into one positional `just` invocation such as `just --one md5 /path/to/file`, not a multi-recipe argv.
 
 Upstream `just` supports multi-recipe argv like `just a b c`, but that is an unsafe default for agent-generated argv: later tokens can be interpreted as more recipe names or silently swallowed as parameters for the first recipe. Agent-facing integrations should therefore issue one validated recipe per tool call and use `--one` where a raw `just` shell-out path still exists.
 
@@ -217,10 +217,10 @@ export default function (pi: ExtensionAPI) {
   let consumerMode = false;
 
   function refreshManifest(cwd: string) {
-    const bootstrap = spawnSync("just", ["bootstrap"], { cwd, encoding: "utf8" });
+    const bootstrap = spawnSync("just", ["--one", "bootstrap"], { cwd, encoding: "utf8" });
     if (bootstrap.status !== 0) throw new Error(bootstrap.stderr || "just bootstrap failed");
 
-    const schema = spawnSync("just", ["schema"], { cwd, encoding: "utf8" });
+    const schema = spawnSync("just", ["--one", "schema"], { cwd, encoding: "utf8" });
     if (schema.status !== 0) throw new Error(schema.stderr || "just schema failed");
 
     manifest = JSON.parse(schema.stdout);
@@ -258,7 +258,7 @@ export default function (pi: ExtensionAPI) {
       if (!manifest) refreshManifest(ctx.cwd);
       const result = spawnSync(
         "just",
-        [params.recipe, ...Object.entries(params.args || {}).map(([k, v]) => `${k}=${v}`)],
+        ["--one", params.recipe, ...Object.entries(params.args || {}).map(([k, v]) => `${k}=${v}`)],
         { cwd: ctx.cwd, encoding: "utf8" }
       );
 
@@ -282,7 +282,7 @@ export default function (pi: ExtensionAPI) {
       prompt: Type.String()
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      const result = spawnSync("just", ["escalate", params.prompt], { cwd: ctx.cwd, encoding: "utf8" });
+      const result = spawnSync("just", ["--one", "escalate", params.prompt], { cwd: ctx.cwd, encoding: "utf8" });
       if (result.status !== 0) {
         throw new Error([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
       }
