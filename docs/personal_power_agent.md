@@ -114,10 +114,11 @@ On startup, the Consumer extension will:
 3. run `just schema`
 4. load `.pi/consumer-profile.json` if present
 5. cache the manifest
-6. switch Pi into Consumer mode
+6. register `/tools` plus one slash command per discovered recipe
+7. switch Pi into Consumer mode
 
 If you deliberately remove the target `Justfile` later, Consumer mode still activates and only the `just_*` tools are exposed. In that case `just_schema` returns an empty manifest until the workspace is repopulated with a Justfile-based tool surface.
-7. show branded startup guidance in the Pi UI without sending it into model context when possible
+8. show branded startup guidance in the Pi UI without sending it into model context when possible
 
 ### 6. Use the Consumer Agent the intended way
 
@@ -163,6 +164,8 @@ If you edit the `Justfile` directly while Pi is open:
 ```text
 /consumer-refresh
 ```
+
+That refresh rebuilds the generated slash-command surface too, so `/tools` and the per-recipe `/<recipe>` commands stay aligned with the current manifest.
 
 Or reload all project resources:
 

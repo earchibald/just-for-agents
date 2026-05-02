@@ -7,6 +7,8 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-02
+
 ### Changed
 
 - Reconciled discovery guidance across the repo so `just schema` (and bare `just` where it defaults to `schema`) is the primary machine-readable entry point, while `just --list` is documented as the human-facing inspection surface and current bridge input.
@@ -22,6 +24,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 - Added dry-run/result capture plus browser-ready review and dashboard rendering for quarantined managed recipe requests, including new `managed-dry-run`, `managed-review`, and `managed-dashboard` operator commands on both the managed overlay and the public Just surface (JFA-84).
 - Hardened the managed governance flow so bootstrap guidance now explains the quarantine-first posture, the dashboard/review surfaces report managed-history drift, and `managed-approve` / `managed-render-include` refuse to overwrite direct edits under the governed approved surface (JFA-85).
 - Added a root `CLAUDE.md` with the repo mandates plus reusable guidance for working with the Obsidian CLI and obsidian-projects without carrying over OP plugin-development workflow details.
+- Added manifest-driven Pi Consumer slash commands so startup and refresh now expose `/tools` plus one generated `/<recipe>` command per enabled Just recipe in the cached schema (JFA-88).
 
 ### Fixed
 
@@ -103,7 +106,8 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 - Fixed Consumer argument mapping so skipped optional parameters with defaults are filled automatically instead of incorrectly requiring positional co-passing.
 - Fixed research prompt guidance to steer agents toward targeted reads and truncation recovery instead of degrading into meta-conversation.
 
-[Unreleased]: https://github.com/earchibald/just-for-agents/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/earchibald/just-for-agents/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/earchibald/just-for-agents/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/earchibald/just-for-agents/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/earchibald/just-for-agents/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/earchibald/just-for-agents/releases/tag/v0.1.0

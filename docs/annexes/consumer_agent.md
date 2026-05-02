@@ -152,9 +152,10 @@ On `session_start`, the extension should:
 3. Run `just schema`
 4. Parse and cache the manifest
 5. Load optional personalization from `.pi/consumer-profile.json` or `~/.pi/agent/consumer-profile.json`
-6. Switch Pi into **Consumer mode**
-7. Visually brand the Pi instance and show startup guidance through `ctx.ui.notify()` and `ctx.ui.setWidget()`
-8. Expose only consumer-safe tools to the model
+6. Register `/tools` plus one slash command per discovered recipe so the current Just surface is visible in Pi's slash-command palette
+7. Switch Pi into **Consumer mode**
+8. Visually brand the Pi instance and show startup guidance through `ctx.ui.notify()` and `ctx.ui.setWidget()`
+9. Expose only consumer-safe tools to the model
 
 On `before_agent_start`, the extension should inject:
 
@@ -351,6 +352,8 @@ The Consumer Agent MUST obtain:
 2. `just schema` manifest
 
 In Pi, the extension should do this automatically on `session_start` and on explicit refresh.
+
+The same refresh path should rebuild the slash-command surface, including `/tools` and one generated `/<recipe>` command per manifest entry, so user-visible commands stay aligned with the cached schema.
 
 ### 2. Execution Logic
 When the user provides a request:
