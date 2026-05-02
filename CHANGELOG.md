@@ -32,6 +32,7 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 ### Changed
 
 - Clarified the README, consumer docs, concept notes, and agent guidance to prefer `just schema` for agent discovery, reserve `just --list` for human-facing inspection, and require exactly one validated recipe per tool call with `just --one` as the guardrail when raw `just` execution remains exposed.
+- Documented the root-cwd contract for agent-facing `just` invocations, including why helper justfiles use `[no-cd]` and when callers should pass `--justfile` from outside the repo or worktree root.
 
 ## [0.3.0] - 2026-04-30
 

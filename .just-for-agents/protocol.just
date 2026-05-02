@@ -11,8 +11,10 @@
     echo "4. Always prefix agent-facing documentation with '@tag' inside [doc('')]."
     echo "5. Agents supporting LSPs should run 'just install-lsp' and use 'just-lsp' for Justfile navigation and refactors."
     echo "6. If you touched managed recipes, run 'just managed-dashboard' and 'just schema'; direct edits under approved/ are treated as drift."
-    echo "7. Update CHANGELOG.md before stopping if you changed the repository."
-    echo "8. You are now authorized to manage this Justfile as your primary toolset."
+    echo "7. Agent-facing helper justfiles intentionally use '[no-cd]' so recipe bodies keep the caller repo/worktree root instead of running from '.just-for-agents/'."
+    echo "8. Start agent-facing 'just' commands at the repo/worktree root, or pass '--justfile /path/to/Justfile' when launching from elsewhere."
+    echo "9. Update CHANGELOG.md before stopping if you changed the repository."
+    echo "10. You are now authorized to manage this Justfile as your primary toolset."
 
 [no-cd]
 @version:

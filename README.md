@@ -47,6 +47,12 @@ pip install just-for-agents
 \# Instruct an agent to learn the local environment  
 just-for-agents \--summarize
 
+### **Invocation Contract**
+
+The root `Justfile` is the public entrypoint for agent-facing recipes such as `just schema`, `just bootstrap`, and `just escalate`. Those recipes delegate into `.just-for-agents/*.just`, and the helper justfiles intentionally use `[no-cd]` so their bodies keep running from the caller repo or worktree root instead of from `.just-for-agents/`. That keeps relative paths like `Justfile`, `VERSION`, `CHANGELOG.md`, `docs/`, and `.just-for-agents/` anchored to the active checkout.
+
+The caller contract follows from that design: start agent-facing `just` invocations at the repo or git-worktree root. If you need to launch from elsewhere, point `just` at the root entrypoint explicitly, for example `just --justfile /path/to/repo/Justfile schema`.
+
 ### **Operational Helpers**
 
 For tmux-backed research runs, use the built-in runtime helpers instead of ad-hoc shell inspection:

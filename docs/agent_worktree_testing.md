@@ -8,6 +8,8 @@ The procedure is non-interactive end-to-end so it can be driven by another agent
 
 You are working inside the worktree directory. All commands assume the worktree root is the current working directory. Do not run any of this from the main checkout.
 
+The root `Justfile` is the public entrypoint for agent-facing recipes. It delegates into `.just-for-agents/*.just`, and those helper justfiles intentionally use `[no-cd]` so the recipe bodies keep operating from the current worktree root instead of from `.just-for-agents/`. If you need to launch from elsewhere, use `just --justfile /path/to/worktree/Justfile <recipe>` so the invocation still binds to the intended checkout.
+
 Required on the host:
 
 - `pi` (`@mariozechner/pi-coding-agent`)
