@@ -97,6 +97,159 @@ function summarizeTools(manifest: Manifest): string {
 		.join("\n");
 }
 
+function formatToolSlashUsage(tool: ManifestTool): string {
+	const parameters = tool.parameters ?? [];
+	if (parameters.length === 0) return `/${tool.name}`;
+	return `/${tool.name} ${parameters
+		.map((parameter) =>
+			parameter.required && parameter.default === undefined
+				? `${parameter.name}=<value>`
+				: `[${parameter.name}=<value>]`,
+		)
+		.join(" ")}`;
+}
+
+function formatToolHelp(tool: ManifestTool): string {
+	const usageDocs = tool.docs?.usage
+		? Array.isArray(tool.docs.usage)
+			? tool.docs.usage
+			: [tool.docs.usage]
+		: [];
+	const lines = [
+		tool.docs?.desc?.trim() || `Run the ${tool.name} recipe from the current just schema.`,
+		"",
+		`Slash usage: ${formatToolSlashUsage(tool)}`,
+		"Arguments can be positional in schema order or passed as key=value pairs.",
+	];
+
+	if (usageDocs.length > 0) {
+		lines.push("", "Recipe docs:", ...usageDocs);
+	}
+
+	const parameters = tool.parameters ?? [];
+	if (parameters.length > 0) {
+		lines.push(
+			"",
+			"Parameters:",
+			...parameters.map((parameter) => {
+				const requirement =
+					parameter.required && parameter.default === undefined ? "required" : "optional";
+				const defaultValue =
+					parameter.default !== undefined ? `, default=${parameter.default}` : "";
+				const description = parameter.description?.trim() ? ` — ${parameter.description.trim()}` : "";
+				return `- ${parameter.name} (${requirement}${defaultValue})${description}`;
+			}),
+		);
+	}
+
+	return lines.join("\n");
+}
+
+function renderToolsCommand(manifest: Manifest): string {
+	const tools = manifest.tools ?? [];
+	if (tools.length === 0) {
+		return [
+			"Enabled Just tools",
+			"",
+			"No tools discovered yet. Add or refresh a Justfile-backed schema and rerun /consumer-refresh.",
+		].join("\n");
+	}
+
+	return [
+		`Enabled Just tools (${tools.length})`,
+		"",
+		...tools.map((tool) => {
+			const desc = tool.docs?.desc?.trim() || "No description.";
+			return `${formatToolSlashUsage(tool)} — ${desc}`;
+		}),
+		"",
+		"Run a command with positional values in schema order or explicit key=value pairs.",
+	].join("\n");
+}
+
+function tokenizeCommandArgs(rawArgs: string): string[] {
+	const tokens: string[] = [];
+	let current = "";
+	let quote: "'" | '"' | undefined;
+	let escaping = false;
+
+	for (const character of rawArgs) {
+		if (escaping) {
+			current += character;
+			escaping = false;
+			continue;
+		}
+		if (character === "\\") {
+			escaping = true;
+			continue;
+		}
+		if (quote) {
+			if (character === quote) {
+				quote = undefined;
+			} else {
+				current += character;
+			}
+			continue;
+		}
+		if (character === "'" || character === '"') {
+			quote = character;
+			continue;
+		}
+		if (/\s/.test(character)) {
+			if (current.length > 0) {
+				tokens.push(current);
+				current = "";
+			}
+			continue;
+		}
+		current += character;
+	}
+
+	if (escaping) {
+		throw new Error("Command arguments cannot end with a trailing backslash.");
+	}
+	if (quote) {
+		throw new Error("Command arguments contain an unterminated quote.");
+	}
+	if (current.length > 0) {
+		tokens.push(current);
+	}
+	return tokens;
+}
+
+function parseCommandArgs(tool: ManifestTool, rawArgs: string): Record<string, string> {
+	if (rawArgs.trim().length === 0) {
+		return {};
+	}
+
+	const tokens = tokenizeCommandArgs(rawArgs.trim());
+	const usesNamedArgs = tokens.some((token) => token.includes("="));
+	if (usesNamedArgs && tokens.some((token) => !token.includes("="))) {
+		throw new Error(`Use either positional arguments or key=value pairs for /${tool.name}, not both.`);
+	}
+
+	if (usesNamedArgs) {
+		const args: Record<string, string> = {};
+		for (const token of tokens) {
+			const separatorIndex = token.indexOf("=");
+			const name = token.slice(0, separatorIndex);
+			const value = token.slice(separatorIndex + 1);
+			if (!name) {
+				throw new Error(`Invalid argument for /${tool.name}: ${token}`);
+			}
+			args[name] = value;
+		}
+		return args;
+	}
+
+	const parameters = tool.parameters ?? [];
+	if (tokens.length > parameters.length) {
+		throw new Error(`Too many arguments for /${tool.name}: expected at most ${parameters.length}, got ${tokens.length}.`);
+	}
+
+	return Object.fromEntries(tokens.map((value, index) => [parameters[index].name, value]));
+}
+
 function restoreState(ctx: ExtensionContext): ConsumerState | undefined {
 	const stateEntry = ctx.sessionManager
 		.getEntries()
@@ -249,13 +402,81 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 		});
 	}
 
+	function formatProcessOutput(result: ReturnType<typeof runJust>): string {
+		return [result.stdout, result.stderr].filter(Boolean).join("\n").trim() || "(no output)";
+	}
+
+	function executeRecipe(tool: ManifestTool, args: Record<string, string>, cwd: string) {
+		validateArgs(tool, args);
+		return runJust(cwd, [tool.name, ...buildRecipeArguments(tool, args)]);
+	}
+
+	// Pi commands are additive for the session, so each generated command resolves
+	// its tool against the current manifest before executing. If a recipe disappears
+	// before the next restart, the stale command fails safely instead of guessing.
+	function syncManifestCommands() {
+		pi.registerCommand("tools", {
+			description: "Show the enabled Just recipe slash commands",
+			handler: async (_args, ctx) => {
+				await ctx.ui.editor("Enabled Just tools", renderToolsCommand(ensureManifest(ctx)));
+			},
+		});
+
+		for (const tool of manifest?.tools ?? []) {
+			pi.registerCommand(tool.name, {
+				description: tool.docs?.desc?.trim() || `Run ${tool.name} from the current just schema`,
+				handler: async (rawArgs, ctx) => {
+					const currentManifest = ensureManifest(ctx);
+					const currentTool = findTool(tool.name, currentManifest);
+					if (!currentTool) {
+						ctx.ui.notify(`/${tool.name} is no longer available. Run /consumer-refresh to resync the schema.`, "warning");
+						return;
+					}
+
+					const requiredParameters = (currentTool.parameters ?? []).filter(
+						(parameter) => parameter.required && parameter.default === undefined,
+					);
+					if (rawArgs.trim().length === 0 && requiredParameters.length > 0) {
+						await ctx.ui.editor(`/${tool.name} usage`, formatToolHelp(currentTool));
+						return;
+					}
+
+					try {
+						const parsedArgs = parseCommandArgs(currentTool, rawArgs);
+						const result = executeRecipe(currentTool, parsedArgs, ctx.cwd);
+						const output = formatProcessOutput(result);
+						if (result.status !== 0) {
+							await ctx.ui.editor(
+								`/${tool.name} failed`,
+								`${formatToolHelp(currentTool)}\n\nCommand output:\n${output}`,
+							);
+							ctx.ui.notify(`/${tool.name} failed (${result.status ?? 1}).`, "error");
+							return;
+						}
+
+						await ctx.ui.editor(`/${tool.name} output`, output);
+						ctx.ui.notify(`/${tool.name} completed.`, "info");
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						await ctx.ui.editor(`/${tool.name} usage`, `${formatToolHelp(currentTool)}\n\n${message}`);
+						ctx.ui.notify(message, "warning");
+					}
+				},
+			});
+		}
+	}
+
 	pi.registerCommand("consumer-refresh", {
 		description: "Refresh just bootstrap instructions and schema",
 		handler: async (_args, ctx) => {
 			const refreshed = refreshManifest(ctx.cwd);
+			syncManifestCommands();
 			setConsumerMode(ctx, true);
 			persistState();
-			ctx.ui.notify(`Consumer schema refreshed (${(refreshed.tools ?? []).length} tools).`, "info");
+			ctx.ui.notify(
+				`Consumer schema refreshed (${(refreshed.tools ?? []).length} tools). Slash commands rebuilt; use /tools to inspect them.`,
+				"info",
+			);
 		},
 	});
 
@@ -290,9 +511,10 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 		parameters: Type.Object({}),
 		async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
 			const currentManifest = refreshManifest(ctx.cwd);
+			syncManifestCommands();
 			const hasJustfile = workspaceHasJustfile(ctx.cwd);
 			const message = hasJustfile
-				? "Refreshed bootstrap instructions and schema."
+				? "Refreshed bootstrap instructions, schema, and generated slash commands."
 				: "No Justfile found. Consumer mode is active, and the cached schema remains empty until this workspace gets a Justfile.";
 			persistState();
 			return {
@@ -329,13 +551,8 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 			if (!tool) {
 				throw new Error(`Unknown recipe: ${params.recipe}`);
 			}
-			validateArgs(tool, args);
-
-			const result = runJust(
-				ctx.cwd,
-				[params.recipe, ...buildRecipeArguments(tool, args)],
-			);
-			const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim() || "(no output)";
+			const result = executeRecipe(tool, args, ctx.cwd);
+			const output = formatProcessOutput(result);
 			return {
 				content: [{ type: "text", text: output }],
 				details: {
@@ -363,8 +580,9 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 			requireSuccess(result, "just escalate");
 			const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
 			const currentManifest = refreshManifest(ctx.cwd);
+			syncManifestCommands();
 			persistState();
-			const refreshMessage = `Consumer schema refreshed (${(currentManifest.tools ?? []).length} tools).`;
+			const refreshMessage = `Consumer schema refreshed (${(currentManifest.tools ?? []).length} tools). Slash commands rebuilt; use /tools to inspect them.`;
 			return {
 				content: [{ type: "text", text: output ? `${output}\n\n${refreshMessage}` : refreshMessage }],
 				details: {
@@ -398,11 +616,17 @@ export default function justConsumerExtension(pi: ExtensionAPI) {
 			ctx.ui.notify(`Using cached consumer schema: ${error instanceof Error ? error.message : String(error)}`, "warning");
 		}
 
+		syncManifestCommands();
 		setConsumerMode(ctx, true);
 		showStartupBranding(ctx);
 		if (!workspaceHasJustfile(ctx.cwd)) {
 			ctx.ui.notify(
 				"No Justfile found in this workspace yet. Consumer mode is active with only just_* tools, and just_schema will stay empty until a Justfile is added.",
+				"info",
+			);
+		} else {
+			ctx.ui.notify(
+				`Registered ${(manifest?.tools ?? []).length} Just recipe slash commands. Use /tools to inspect them.`,
 				"info",
 			);
 		}
